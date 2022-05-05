@@ -10,6 +10,7 @@ import java.nio.charset.Charset;
 import java.sql.Array;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -24,7 +25,7 @@ public class JiraManager {
         return sb.toString();
     }
 
-    public static JSONArray readJsonArrayFromUrl(String url) throws IOException, JSONException {
+    private static JSONArray readJsonArrayFromUrl(String url) throws IOException, JSONException {
         InputStream is = new URL(url).openStream();
         try {
             BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
@@ -36,7 +37,7 @@ public class JiraManager {
         }
     }
 
-    public static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
+    private static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
         InputStream is = new URL(url).openStream();
         try {
             BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
@@ -89,7 +90,7 @@ public class JiraManager {
         Integer total = 0;
         while(true){
             count = count + versionCount;
-            JSONObject json = readJsonFromUrl(url+"&startAt"+count);
+            JSONObject json = readJsonFromUrl(url+"?maxResult=50&startAt="+count);
 
             JSONArray jVersions = json.getJSONArray("values");
             total = jVersions.length();
@@ -106,9 +107,12 @@ public class JiraManager {
     }
     private static Version parseVersion(JSONObject ver) throws ParseException {
         String name = ver.getString("name");
-        String releaseDate = ver.getString("releaseDate");
+        Date releaseD = null;
+        if(ver.has("releaseDate")) {
+            String releaseDate = ver.getString("releaseDate");
+           releaseD = new SimpleDateFormat("yyyy-MM-dd").parse(releaseDate);
+        }
         Boolean released = ver.getBoolean("released");
-        Date releaseD = new SimpleDateFormat("yyyy-MM-dd").parse(releaseDate);
-        return new Version(name,releaseD,released);
+        return new Version(name, releaseD, released);
     }
 }
