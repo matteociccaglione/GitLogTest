@@ -1,4 +1,5 @@
 it/matteociccaglione/gitlogtest/jira/JiraManager.class
+it/matteociccaglione/gitlogtest/jira/Version$VersionComparator.class
 it/matteociccaglione/gitlogtest/jira/Version.class
 it/matteociccaglione/gitlogtest/jira/Issue.class
 it/matteociccaglione/gitlogtest/GitLogMiningClass.class
