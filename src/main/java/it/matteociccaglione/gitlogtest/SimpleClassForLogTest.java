@@ -1,4 +1,5 @@
 package it.matteociccaglione.gitlogtest;
+import it.matteociccaglione.gitlogtest.jira.Issue;
 import it.matteociccaglione.gitlogtest.jira.JiraManager;
 import it.matteociccaglione.gitlogtest.jira.Version;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -34,5 +35,8 @@ public class SimpleClassForLogTest {
         for(Version version: versionToUse){
             System.out.println(version.toString());
         }
+        List<Issue> bugs = JiraManager.retrieveIssues("ZOOKEEPER");
+
+
     }
 }

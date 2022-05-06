@@ -1,0 +1,137 @@
+package it.matteociccaglione.gitlogtest.jira;
+
+public class Classes {
+    private Version version;
+    private Boolean buggy;
+    private Long size;
+    private Long locTouched;
+    private Integer nr;
+    private Integer nFix;
+    private Integer nAuth;
+    private Integer locAdded;
+    private Long maxLocAdded;
+    private Float avgLocAdded;
+    private Integer churn;
+    private Integer maxChurn;
+    private Float avgChurn;
+
+    public Classes(Version version, Boolean buggy, Long size, Long locTouched, Integer nr, Integer nFix, Integer nAuth, Integer locAdded, Long maxLocAdded, Float avgLocAdded, Integer churn, Integer maxChurn, Float avgChurn) {
+        this.version = version;
+        this.buggy = buggy;
+        this.size = size;
+        this.locTouched = locTouched;
+        this.nr = nr;
+        this.nFix = nFix;
+        this.nAuth = nAuth;
+        this.locAdded = locAdded;
+        this.maxLocAdded = maxLocAdded;
+        this.avgLocAdded = avgLocAdded;
+        this.churn = churn;
+        this.maxChurn = maxChurn;
+        this.avgChurn = avgChurn;
+    }
+
+    public Version getVersion() {
+        return version;
+    }
+
+    public void setVersion(Version version) {
+        this.version = version;
+    }
+
+    public Boolean getBuggy() {
+        return buggy;
+    }
+
+    public void setBuggy(Boolean buggy) {
+        this.buggy = buggy;
+    }
+
+    public Long getSize() {
+        return size;
+    }
+
+    public void setSize(Long size) {
+        this.size = size;
+    }
+
+    public Long getLocTouched() {
+        return locTouched;
+    }
+
+    public void setLocTouched(Long locTouched) {
+        this.locTouched = locTouched;
+    }
+
+    public Integer getNr() {
+        return nr;
+    }
+
+    public void setNr(Integer nr) {
+        this.nr = nr;
+    }
+
+    public Integer getnFix() {
+        return nFix;
+    }
+
+    public void setnFix(Integer nFix) {
+        this.nFix = nFix;
+    }
+
+    public Integer getnAuth() {
+        return nAuth;
+    }
+
+    public void setnAuth(Integer nAuth) {
+        this.nAuth = nAuth;
+    }
+
+    public Integer getLocAdded() {
+        return locAdded;
+    }
+
+    public void setLocAdded(Integer locAdded) {
+        this.locAdded = locAdded;
+    }
+
+    public Long getMaxLocAdded() {
+        return maxLocAdded;
+    }
+
+    public void setMaxLocAdded(Long maxLocAdded) {
+        this.maxLocAdded = maxLocAdded;
+    }
+
+    public Float getAvgLocAdded() {
+        return avgLocAdded;
+    }
+
+    public void setAvgLocAdded(Float avgLocAdded) {
+        this.avgLocAdded = avgLocAdded;
+    }
+
+    public Integer getChurn() {
+        return churn;
+    }
+
+    public void setChurn(Integer churn) {
+        this.churn = churn;
+    }
+
+    public Integer getMaxChurn() {
+        return maxChurn;
+    }
+
+    public void setMaxChurn(Integer maxChurn) {
+        this.maxChurn = maxChurn;
+    }
+
+    public Float getAvgChurn() {
+        return avgChurn;
+    }
+
+    public void setAvgChurn(Float avgChurn) {
+        this.avgChurn = avgChurn;
+    }
+}
