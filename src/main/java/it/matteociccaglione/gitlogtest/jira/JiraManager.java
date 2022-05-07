@@ -43,6 +43,7 @@ public class JiraManager {
             BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
             String jsonText = readAll(rd);
             JSONObject json = new JSONObject(jsonText);
+            is.close();
             return json;
         } finally {
             is.close();
@@ -68,6 +69,9 @@ public class JiraManager {
                 String key = jIssues.getJSONObject(issueCount%1000).get("key").toString();
                 String id = jIssues.getJSONObject(issueCount%1000).get("id").toString();
                 JSONObject fields = jIssues.getJSONObject(issueCount%1000).getJSONObject("fields");
+                if(!fields.has("resolutionDate")){
+                    continue;
+                }
                 String resolutionDate = fields.getString("resolutionDate");
                 String created = fields.getString("created");
                 JSONArray versions = fields.getJSONArray("versions");
@@ -91,11 +95,13 @@ public class JiraManager {
         while(true){
             count = count + versionCount;
             JSONObject json = readJsonFromUrl(url+"?maxResult=50&startAt="+count);
-
             JSONArray jVersions = json.getJSONArray("values");
             total = jVersions.length();
             for(versionCount = 0;versionCount<total;versionCount++){
                 Version version = parseVersion(jVersions.getJSONObject(versionCount));
+                if(version.getVersionDate()==null){
+                    continue;
+                }
                 versions.add(version);
             }
             versionCount = total;

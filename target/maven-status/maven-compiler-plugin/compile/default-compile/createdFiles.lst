@@ -1,6 +1,8 @@
+it/matteociccaglione/gitlogtest/GitLogMiningClass$Commit.class
 it/matteociccaglione/gitlogtest/jira/JiraManager.class
 it/matteociccaglione/gitlogtest/jira/Version$VersionComparator.class
 it/matteociccaglione/gitlogtest/jira/Version.class
 it/matteociccaglione/gitlogtest/jira/Issue.class
-it/matteociccaglione/gitlogtest/GitLogMiningClass.class
 it/matteociccaglione/gitlogtest/SimpleClassForLogTest.class
+it/matteociccaglione/gitlogtest/jira/Classes.class
+it/matteociccaglione/gitlogtest/GitLogMiningClass.class

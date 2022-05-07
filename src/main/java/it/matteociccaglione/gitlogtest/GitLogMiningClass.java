@@ -24,11 +24,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 public class GitLogMiningClass {
+    private ArrayList<RevCommit> commits = new ArrayList<>();
     private String repositoryPath;
-    private GitLogMiningClass(String repositoryPath){
+    private GitLogMiningClass(String repositoryPath) throws GitAPIException, IOException {
         this.repositoryPath = repositoryPath;
+        Git git = this.buildRepository();
+
+        /*
+        for (Ref branch : branches) {
+            System.out.println(branch.getName());
+            if (branch.getName().equals("refs/heads/master")) {
+                System.out.println("HERE");
+                */
+        Iterable<RevCommit> commits = git.log().call();
+        for (RevCommit commit : commits){
+            this.commits.add(commit);
+        }
+        git.close();
     }
-    public static GitLogMiningClass getInstance(String repositoryPath){
+    public static GitLogMiningClass getInstance(String repositoryPath) throws GitAPIException, IOException {
+
         return new GitLogMiningClass(repositoryPath);
     }
     private  Git buildRepository() throws IOException {
@@ -38,23 +53,34 @@ public class GitLogMiningClass {
     }
     public  List<Commit> getCommits(String filter) throws GitAPIException, IOException {
         List<Commit> codes = new ArrayList<>();
-        Git git = this.buildRepository();
+        List<RevCommit> commitToRemove = new ArrayList<>();
         RevCommit prevCommit = null;
-        /*
-        for (Ref branch : branches) {
-            System.out.println(branch.getName());
-            if (branch.getName().equals("refs/heads/master")) {
-                System.out.println("HERE");
-                */
-                Iterable<RevCommit> commits = git.log().call();
-                for (RevCommit com : commits) {
+                for (RevCommit com : this.commits) {
                     String mex = com.getFullMessage();
                     if (mex.contains(filter)) {
                         codes.add(new Commit(com,prevCommit));
+                        commitToRemove.add(com);
                     }
                     prevCommit = com;
                 }
+                for (RevCommit com: commitToRemove){
+                    this.commits.remove(com);
+                }
                 return codes;
+    }
+    public List<Commit> getCommits(){
+        List<Commit> codes = new ArrayList<>();
+        List<RevCommit> commitToRemove = new ArrayList<>();
+        RevCommit prevCommit = null;
+        for (RevCommit com : this.commits) {
+            codes.add(new Commit(com,prevCommit));
+            commitToRemove.add(com);
+            prevCommit = com;
+        }
+        for (RevCommit com: commitToRemove){
+            this.commits.remove(com);
+        }
+        return codes;
     }
     public static class Commit{
         public Commit(RevCommit commit, RevCommit prevCommit) {
@@ -118,7 +144,7 @@ public class GitLogMiningClass {
             cl.setLocTouched(cl.getLocTouched()+linesAdded+linesDeleted);
             cl.setChurn(cl.getChurn()+linesAdded-linesDeleted);
         }
-
+        git.close();
         return classes;
     }
 

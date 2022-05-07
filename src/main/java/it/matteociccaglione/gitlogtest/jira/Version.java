@@ -16,9 +16,14 @@ public class Version {
         return classes;
     }
 
-    public void setClasses(List<Classes> classes) {
+    public void setClasses(List<Classes> classes,Boolean buggy) {
         if(this.classes == null){
             this.classes = classes;
+            if(buggy){
+                for (Classes cl: this.classes){
+                    cl.setBuggy(true);
+                }
+            }
             return;
         }
         for (Classes cl : classes){
@@ -33,7 +38,7 @@ public class Version {
             prevCl.setMaxChurn(Math.max(prevCl.getMaxChurn(),cl.getChurn()));
             prevCl.setMaxLocAdded(Math.max(prevCl.getMaxLocAdded(),cl.getLocAdded()));
             prevCl.setNr(prevCl.getNr()+1);
-
+            prevCl.setBuggy(buggy);
         }
     }
 
@@ -82,6 +87,7 @@ public class Version {
 
         @Override
         public int compare(Version version, Version t1) {
+            /*
             String[] versionNumbersArray1 =version.versionNumber.split("\\.");
             String[] versionNumbersArray2 = t1.versionNumber.split("\\.");
             ArrayList<String> versionNumbers1 = new ArrayList<String>(List.of(versionNumbersArray1));
@@ -110,7 +116,8 @@ public class Version {
             if(Integer.parseInt(versionNumbers1.get(2))<Integer.parseInt(versionNumbers2.get(2))){
                 return -1;
             }
-            return 0;
+            return 0;*/
+            return version.getVersionDate().compareTo(t1.getVersionDate());
         }
 
         @Override
@@ -120,7 +127,7 @@ public class Version {
     }
     public static Version getVersionByDate(List<Version> versions, Date date){
         for (Version ver: versions){
-            if(ver.versionDate.compareTo(date)==0){
+            if(ver.versionDate.compareTo(date)>0){
                 return ver;
             }
         }

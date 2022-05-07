@@ -44,6 +44,17 @@ public class Classes {
 
     public Classes(String name){
         this.name = name;
+        this.locAdded=0;
+        this.locTouched = 0L;
+        this.maxChurn = 0;
+        this.avgChurn = 0f;
+        this.avgLocAdded = 0f;
+        this.nAuth = 0;
+        this.nr = 0;
+        this.nFix = 0;
+        this.size = 0L;
+        this.maxLocAdded = 0L;
+        this.churn = 0;
     }
     public Version getVersion() {
         return version;
