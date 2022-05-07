@@ -10,6 +10,33 @@ public class Version {
     private Date versionDate;
     private Boolean released;
 
+    private List<Classes> classes;
+
+    public List<Classes> getClasses() {
+        return classes;
+    }
+
+    public void setClasses(List<Classes> classes) {
+        if(this.classes == null){
+            this.classes = classes;
+            return;
+        }
+        for (Classes cl : classes){
+            if(!this.classes.contains(cl)){
+                this.classes.add(cl);
+                continue;
+            }
+            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
+            prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
+            prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
+            prevCl.setMaxChurn(Math.max(prevCl.getMaxChurn(),cl.getChurn()));
+            prevCl.setMaxLocAdded(Math.max(prevCl.getMaxLocAdded(),cl.getLocAdded()));
+            prevCl.setNr(prevCl.getNr()+1);
+
+        }
+    }
+
     public Boolean getReleased() {
         return released;
     }
@@ -90,5 +117,13 @@ public class Version {
         public boolean equals(Object o) {
             return false;
         }
+    }
+    public static Version getVersionByDate(List<Version> versions, Date date){
+        for (Version ver: versions){
+            if(ver.versionDate.compareTo(date)==0){
+                return ver;
+            }
+        }
+        return null;
     }
 }

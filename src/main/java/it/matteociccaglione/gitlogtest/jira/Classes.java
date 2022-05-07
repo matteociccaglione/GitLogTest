@@ -1,6 +1,9 @@
 package it.matteociccaglione.gitlogtest.jira;
 
+import java.util.List;
+
 public class Classes {
+    private String name;
     private Version version;
     private Boolean buggy;
     private Long size;
@@ -31,6 +34,17 @@ public class Classes {
         this.avgChurn = avgChurn;
     }
 
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public Classes(String name){
+        this.name = name;
+    }
     public Version getVersion() {
         return version;
     }
@@ -133,5 +147,13 @@ public class Classes {
 
     public void setAvgChurn(Float avgChurn) {
         this.avgChurn = avgChurn;
+    }
+    public static Classes getClassByName(String name, List<Classes> classes){
+        for (Classes cl : classes){
+            if(cl.getName().equalsIgnoreCase(name)){
+                return cl;
+            }
+        }
+        return null;
     }
 }
