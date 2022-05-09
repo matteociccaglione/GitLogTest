@@ -1,13 +1,15 @@
 package it.matteociccaglione.gitlogtest.jira;
 
+import java.util.List;
+
 public class Issue {
     private String key;
     private String id;
-    private Version version;
+    private List<Version> version;
     private String createdDate;
     private String resolvedDate;
 
-    public Issue(String key, String id, Version version, String createdDate, String resolvedDate) {
+    public Issue(String key, String id, List<Version> version, String createdDate, String resolvedDate) {
         this.key = key;
         this.id = id;
         this.version = version;
@@ -23,7 +25,7 @@ public class Issue {
         return id;
     }
 
-    public Version getVersion() {
+    public List<Version> getVersion() {
         return version;
     }
 
@@ -43,7 +45,7 @@ public class Issue {
         this.id = id;
     }
 
-    public void setVersion(Version version) {
+    public void setVersion(List<Version> version) {
         this.version = version;
     }
 

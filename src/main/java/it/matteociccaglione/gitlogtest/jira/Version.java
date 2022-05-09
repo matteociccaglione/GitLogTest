@@ -1,21 +1,48 @@
 package it.matteociccaglione.gitlogtest.jira;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 public class Version {
     private String versionNumber;
     private Date versionDate;
     private Boolean released;
+    private Integer numberOfBugFixed=0;
+
+    public Integer getNumberOfBugFixed() {
+        return numberOfBugFixed;
+    }
+
+    public void setNumberOfBugFixed(Integer numberOfBugFixed) {
+        this.numberOfBugFixed = numberOfBugFixed;
+    }
+
 
     private List<Classes> classes;
 
     public List<Classes> getClasses() {
         return classes;
     }
-
+    public void setClasses(List<Classes> classes){
+        if(this.classes == null){
+            this.classes = classes;
+            return;
+        }
+        for (Classes cl : classes){
+            if(!this.classes.contains(cl)){
+                this.classes.add(cl);
+                continue;
+            }
+            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
+            prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
+            prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
+            prevCl.setMaxChurn(Math.max(prevCl.getMaxChurn(),cl.getChurn()));
+            prevCl.setMaxLocAdded(Math.max(prevCl.getMaxLocAdded(),cl.getLocAdded()));
+            prevCl.setNr(prevCl.getNr()+cl.getNr());
+            prevCl.setAuthors(cl.getAuthors());
+            prevCl.setnFix(prevCl.getnFix()+cl.getnFix());
+        }
+    }
     public void setClasses(List<Classes> classes,Boolean buggy) {
         if(this.classes == null){
             this.classes = classes;
@@ -38,6 +65,10 @@ public class Version {
             prevCl.setMaxChurn(Math.max(prevCl.getMaxChurn(),cl.getChurn()));
             prevCl.setMaxLocAdded(Math.max(prevCl.getMaxLocAdded(),cl.getLocAdded()));
             prevCl.setNr(prevCl.getNr()+1);
+            prevCl.setAuthors(cl.getAuthors());
+            if(buggy){
+                prevCl.setnFix(prevCl.getnFix()+1);
+            }
             prevCl.setBuggy(buggy);
         }
     }
@@ -132,5 +163,16 @@ public class Version {
             }
         }
         return null;
+    }
+
+    public static Integer toEpochVersion(List<Version> versions, Version version){
+        int epochVersion = 0;
+        for (Version ver: versions){
+            if(Objects.equals(ver.getVersionNumber(), version.getVersionNumber())){
+                return epochVersion;
+            }
+            epochVersion++;
+        }
+        return -1;
     }
 }

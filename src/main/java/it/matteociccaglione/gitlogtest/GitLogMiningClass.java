@@ -2,10 +2,8 @@ package it.matteociccaglione.gitlogtest;
 import it.matteociccaglione.gitlogtest.jira.Classes;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.diff.DiffFormatter;
-import org.eclipse.jgit.diff.Edit;
-import org.eclipse.jgit.diff.RawTextComparator;
+import org.eclipse.jgit.blame.BlameResult;
+import org.eclipse.jgit.diff.*;
 import org.eclipse.jgit.errors.IncorrectObjectTypeException;
 import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectReader;
@@ -132,6 +130,10 @@ public class GitLogMiningClass {
                 //This is a new file
                 fileName = diff.getNewPath();
             }
+            if(!fileName.endsWith(".java")){
+                //ignore non .java files
+                continue;
+            }
             Classes cl = new Classes(fileName);
             classes.add(cl);
             Integer linesDeleted = 0;
@@ -143,9 +145,24 @@ public class GitLogMiningClass {
             cl.setLocAdded(cl.getLocAdded()+linesAdded);
             cl.setLocTouched(cl.getLocTouched()+linesAdded+linesDeleted);
             cl.setChurn(cl.getChurn()+linesAdded-linesDeleted);
+            cl.setAuthors(List.of(commit.getCommit().getAuthorIdent().getName()));
         }
         git.close();
         return classes;
     }
 
+    public RevCommit blame(String file, RevCommit commit) throws IOException, GitAPIException {
+        Git git = buildRepository();
+        BlameResult blameResult = git.blame().setFilePath(file).setTextComparator(RawTextComparator.WS_IGNORE_ALL).call();
+        RawText rawText = blameResult.getResultContents();
+        RevCommit result = null;
+        for (int i = 0; i < rawText.size(); i++){
+            RevCommit sourceCommit = blameResult.getSourceCommit(i);
+            if(sourceCommit.getId() == commit.getId()){
+                break;
+            }
+            result = sourceCommit;
+        }
+        return result;
+    }
 }

@@ -7,6 +7,7 @@ import org.json.JSONObject;
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.sql.Array;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -26,27 +27,20 @@ public class JiraManager {
     }
 
     private static JSONArray readJsonArrayFromUrl(String url) throws IOException, JSONException {
-        InputStream is = new URL(url).openStream();
-        try {
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+        try (InputStream is = new URL(url).openStream()) {
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
             String jsonText = readAll(rd);
-            JSONArray json = new JSONArray(jsonText);
-            return json;
-        } finally {
-            is.close();
+            return new JSONArray(jsonText);
         }
     }
 
     private static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
-        InputStream is = new URL(url).openStream();
-        try {
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, Charset.forName("UTF-8")));
+        try (InputStream is = new URL(url).openStream()) {
+            BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
             String jsonText = readAll(rd);
             JSONObject json = new JSONObject(jsonText);
             is.close();
             return json;
-        } finally {
-            is.close();
         }
     }
     public static List<Issue> retrieveIssues(String projectName) throws IOException, ParseException {
@@ -55,13 +49,13 @@ public class JiraManager {
                 + projectName + "%22AND%22issueType%22=%22Bug%22AND(%22status%22=%22closed%22OR"
                 + "%22status%22=%22resolved%22)AND%22resolution%22=%22fixed%22&fields=key,resolutiondate,versions,created&startAt=";
 
-        Integer issueCount=0;
-        Integer count=0;
-        Integer totalIssues = 0;
+        int issueCount=0;
+        int count=0;
+        int totalIssues = 0;
 
         do{
             count = issueCount + 1000;
-            String url = constantUrl + issueCount.toString()+ "&maxResults=" + count.toString();
+            String url = constantUrl + Integer.toString(issueCount) + "&maxResults=" + Integer.toString(count);
             JSONObject json = readJsonFromUrl(url);
             JSONArray jIssues = json.getJSONArray("issues");
             totalIssues = json.getInt("total");
@@ -75,11 +69,15 @@ public class JiraManager {
                 String resolutionDate = fields.getString("resolutionDate");
                 String created = fields.getString("created");
                 JSONArray versions = fields.getJSONArray("versions");
+                List<Version> av = new ArrayList<>();
                 Version version = null;
                 if (!versions.isEmpty()){
-                    version = parseVersion(versions.getJSONObject(0));
+                    for(int i = 0; i<versions.length(); i++) {
+                        version = parseVersion(versions.getJSONObject(i));
+                        av.add(version);
+                    }
                 }
-                Issue is = new Issue(key,id,version,created,resolutionDate);
+                Issue is = new Issue(key,id,av,created,resolutionDate);
                 issues.add(is);
             }
         }while(issueCount<totalIssues);
@@ -89,9 +87,9 @@ public class JiraManager {
     public static List<Version> retrieveVersions(String projectName) throws IOException, ParseException {
         List<Version> versions = new ArrayList<>();
         String url = "https://issues.apache.org/jira/rest/api/2/project/"+projectName+"/version";
-        Integer versionCount = 0;
-        Integer count = 0;
-        Integer total = 0;
+        int versionCount = 0;
+        int count = 0;
+        int total = 0;
         while(true){
             count = count + versionCount;
             JSONObject json = readJsonFromUrl(url+"?maxResult=50&startAt="+count);

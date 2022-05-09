@@ -1,5 +1,6 @@
 package it.matteociccaglione.gitlogtest.jira;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Classes {
@@ -17,7 +18,17 @@ public class Classes {
     private Integer churn;
     private Integer maxChurn;
     private Float avgChurn;
-
+    private List<String> authors = new ArrayList<>();
+    public List<String> getAuthors(){
+        return this.authors;
+    }
+    public void setAuthors(List<String> auth){
+        for (String au : auth){
+            if(!this.authors.contains(au)){
+                this.authors.add(au);
+            }
+        }
+    }
     public Classes(Version version, Boolean buggy, Long size, Long locTouched, Integer nr, Integer nFix, Integer nAuth, Integer locAdded, Long maxLocAdded, Float avgLocAdded, Integer churn, Integer maxChurn, Float avgChurn) {
         this.version = version;
         this.buggy = buggy;
@@ -105,7 +116,7 @@ public class Classes {
     }
 
     public Integer getnAuth() {
-        return nAuth;
+        return this.authors.size();
     }
 
     public void setnAuth(Integer nAuth) {
