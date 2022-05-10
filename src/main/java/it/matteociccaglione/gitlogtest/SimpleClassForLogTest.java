@@ -1,4 +1,5 @@
 package it.matteociccaglione.gitlogtest;
+import it.matteociccaglione.gitlogtest.file.FileBuilder;
 import it.matteociccaglione.gitlogtest.jira.Classes;
 import it.matteociccaglione.gitlogtest.jira.Issue;
 import it.matteociccaglione.gitlogtest.jira.JiraManager;
@@ -131,23 +132,7 @@ public class SimpleClassForLogTest {
             }
             prevVersion = version;
         }
-        FileWriter file = new FileWriter("/home/utente/Scrivania/zookeeper.csv");
-        StringBuilder fileContent;
-        for (Version ver: versionToUse){
-
-            List<Classes> classes = ver.getClasses();
-            if(classes==null){
-                continue;
-            }
-            for (Classes clas: classes){
-                fileContent = new StringBuilder();
-                fileContent.append(ver.getVersionNumber()).append(",");
-                fileContent.append(clas.getName()).append(",").append(clas.getLocTouched().toString()).append(",").append(clas.getLocAdded().toString()).append(",").append(clas.getChurn().toString()).append(",").append(clas.getBuggy().toString());
-                fileContent.append("\n");
-                file.write(fileContent.toString());
-            }
-
-        }
-        file.close();
+        FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/zookeeper.csv",versionToUse);
+        fb.toFlat("/home/utente/Scrivania/zookeeper.arff");
     }
 }
