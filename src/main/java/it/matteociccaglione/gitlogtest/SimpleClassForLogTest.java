@@ -103,7 +103,6 @@ public class SimpleClassForLogTest {
             for (int i = ivEpoch; i < Version.toEpochVersion(versionToUse,fixedVersion); i++){
                 affectedVersion.add(versionToUse.get(i));
             }
-            commits = gitLog.getCommits(bug.getId());
             for (GitLogMiningClass.Commit commit: commits){
                 List<Classes> classes = gitLog.getFileModified(commit);
                 if(classes.size() == 0){
