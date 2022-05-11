@@ -48,7 +48,7 @@ public class JiraManager {
         String constantUrl = "https://issues.apache.org/jira/rest/api/2/search?jql=project=%22"
                 + projectName + "%22AND%22issueType%22=%22Bug%22AND(%22status%22=%22closed%22OR"
                 + "%22status%22=%22resolved%22)AND%22resolution%22=%22fixed%22&fields=key,resolutiondate,versions,created&startAt=";
-
+        System.out.println(constantUrl);
         int issueCount=0;
         int count=0;
         int totalIssues = 0;
@@ -60,13 +60,14 @@ public class JiraManager {
             JSONArray jIssues = json.getJSONArray("issues");
             totalIssues = json.getInt("total");
             for (; issueCount < totalIssues && issueCount < count; issueCount++){
+
                 String key = jIssues.getJSONObject(issueCount%1000).get("key").toString();
                 String id = jIssues.getJSONObject(issueCount%1000).get("id").toString();
                 JSONObject fields = jIssues.getJSONObject(issueCount%1000).getJSONObject("fields");
-                if(!fields.has("resolutionDate")){
+                if(!fields.has("resolutiondate")){
                     continue;
                 }
-                String resolutionDate = fields.getString("resolutionDate");
+                String resolutionDate = fields.getString("resolutiondate");
                 String created = fields.getString("created");
                 JSONArray versions = fields.getJSONArray("versions");
                 List<Version> av = new ArrayList<>();
@@ -80,6 +81,7 @@ public class JiraManager {
                 Issue is = new Issue(key,id,av,created,resolutionDate);
                 issues.add(is);
             }
+
         }while(issueCount<totalIssues);
         return issues;
     }

@@ -157,12 +157,27 @@ public class Version {
         }
     }
     public static Version getVersionByDate(List<Version> versions, Date date){
+        Version finalVersion = null;
         for (Version ver: versions){
-            if(ver.versionDate.compareTo(date)>0){
-                return ver;
+            if(ver.versionDate.compareTo(date)<0){
+                if(finalVersion == null){
+                    finalVersion=ver;
+                    continue;
+                }
+                if(finalVersion.getVersionDate().compareTo(ver.getVersionDate())<0){
+                    finalVersion = ver;
+                }
             }
         }
-        return null;
+        if(finalVersion==null){
+            System.out.println(date.toString());
+            for (Version ver: versions){
+                System.out.println(ver.getVersionDate());
+            }
+            System.out.println("\n");
+            return versions.get(0);
+        }
+        return finalVersion;
     }
 
     public static Integer toEpochVersion(List<Version> versions, Version version){

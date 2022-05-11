@@ -66,6 +66,7 @@ public class Classes {
         this.size = 0L;
         this.maxLocAdded = 0L;
         this.churn = 0;
+        this.buggy = false;
     }
     public Version getVersion() {
         return version;

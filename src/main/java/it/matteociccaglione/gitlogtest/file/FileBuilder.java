@@ -14,9 +14,11 @@ public class FileBuilder {
         this.csv = csv;
     }
 
-    public static FileBuilder build(String filename, List<Version> dataset) throws IOException {
+    public static FileBuilder build(String filename, List<Version> dataset, String header) throws IOException {
         FileWriter file = new FileWriter(filename);
-        StringBuilder fileContent;
+        StringBuilder fileContent = new StringBuilder();
+        fileContent.append(header).append("\n");
+        file.write(fileContent.toString());
         for (Version ver: dataset){
 
             List<Classes> classes = ver.getClasses();
@@ -25,8 +27,9 @@ public class FileBuilder {
             }
             for (Classes clas: classes){
                 fileContent = new StringBuilder();
+
                 fileContent.append(ver.getVersionNumber()).append(",");
-                fileContent.append(clas.getName()).append(",").append(clas.getLocTouched().toString()).append(",").append(clas.getLocAdded().toString()).append(",").append(clas.getChurn().toString()).append(",").append(clas.getBuggy().toString());
+                fileContent.append(clas.getName()).append(",").append(clas.getLocTouched().toString()).append(",").append(clas.getLocAdded().toString()).append(",").append(clas.getChurn().toString()).append(",").append(clas.getnAuth().toString()).append(",").append(clas.getMaxLocAdded().toString()).append(",").append(clas.getMaxChurn().toString()).append(",").append(clas.getAvgLocAdded().toString()).append(",").append(clas.getAvgChurn()).append(",").append(clas.getnFix()).append(",").append(clas.getNr()).append(",").append(clas.getBuggy().toString());
                 fileContent.append("\n");
                 file.write(fileContent.toString());
             }

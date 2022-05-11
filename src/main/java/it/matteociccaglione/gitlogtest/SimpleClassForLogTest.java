@@ -46,7 +46,8 @@ public class SimpleClassForLogTest {
         List<Issue> bugs = JiraManager.retrieveIssues("ZOOKEEPER");
         GitLogMiningClass gitLog = GitLogMiningClass.getInstance("/home/utente/zookeeper/.git");
         //Now for each bug search commit with this bug id
-        for (Issue bug: bugs){
+        List<Issue> copyBugs = List.copyOf(bugs);
+        for (Issue bug: copyBugs){
 
             List<Version> affectedVersion = new ArrayList<>();
             if(bug.getVersion()!=null){
@@ -62,10 +63,14 @@ public class SimpleClassForLogTest {
                 }
                 bugs.remove(bug);
             }
+
             else{
                 continue;
             }
-            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getId());
+            if(affectedVersion.isEmpty()){
+                continue;
+            }
+            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
             //For each commit I need to see what classes was modified
             for (GitLogMiningClass.Commit commit: commits){
 
@@ -80,7 +85,7 @@ public class SimpleClassForLogTest {
             }
         }
         for (Issue bug: bugs){
-            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getId());
+            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
             List<Version> affectedVersion = new ArrayList<>();
             Date commitDate = Date.from(Instant.ofEpochSecond(commits.get(0).getCommit().getCommitTime()));
             Version fixedVersion = Version.getVersionByDate(versionToUse,commitDate);
@@ -132,7 +137,10 @@ public class SimpleClassForLogTest {
             }
             prevVersion = version;
         }
-        FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/zookeeper.csv",versionToUse);
+        String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
+        FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/zookeeper.csv",versionToUse,header);
         fb.toFlat("/home/utente/Scrivania/zookeeper.arff");
+
+
     }
 }
