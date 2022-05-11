@@ -5,4 +5,5 @@ it/matteociccaglione/gitlogtest/jira/Version.class
 it/matteociccaglione/gitlogtest/jira/Issue.class
 it/matteociccaglione/gitlogtest/SimpleClassForLogTest.class
 it/matteociccaglione/gitlogtest/jira/Classes.class
+it/matteociccaglione/gitlogtest/file/FileBuilder.class
 it/matteociccaglione/gitlogtest/GitLogMiningClass.class

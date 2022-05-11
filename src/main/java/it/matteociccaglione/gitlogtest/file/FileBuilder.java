@@ -72,7 +72,9 @@ public class FileBuilder {
                     if(!atValueMap.containsKey(attributes.get(i))){
                         atValueMap.put(attributes.get(i),new ArrayList<>());
                     }
-                    atValueMap.get(attributes.get(i)).add(words.get(i));
+                    if(!atValueMap.get(attributes.get(i)).contains(words.get(i))) {
+                        atValueMap.get(attributes.get(i)).add(words.get(i));
+                    }
                 }
             }
         }
