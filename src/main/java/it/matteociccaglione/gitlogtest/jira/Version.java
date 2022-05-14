@@ -36,8 +36,12 @@ public class Version {
             prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
             prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
             prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
-            prevCl.setMaxChurn(Math.max(prevCl.getMaxChurn(),cl.getChurn()));
-            prevCl.setMaxLocAdded(Math.max(prevCl.getMaxLocAdded(),cl.getLocAdded()));
+            if(prevCl.getMaxChurn()<cl.getChurn()){
+                prevCl.setMaxChurn(cl.getChurn());
+            }
+            if(prevCl.getMaxLocAdded()<cl.getLocAdded()){
+                prevCl.setMaxLocAdded((long)cl.getLocAdded());
+            }
             prevCl.setNr(prevCl.getNr()+cl.getNr());
             prevCl.setAuthors(cl.getAuthors());
             prevCl.setnFix(prevCl.getnFix()+cl.getnFix());
@@ -62,12 +66,16 @@ public class Version {
             prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
             prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
             prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
-            prevCl.setMaxChurn(Math.max(prevCl.getMaxChurn(),cl.getChurn()));
-            prevCl.setMaxLocAdded(Math.max(prevCl.getMaxLocAdded(),cl.getLocAdded()));
-            prevCl.setNr(prevCl.getNr()+1);
+            if(prevCl.getMaxChurn()<cl.getChurn()){
+                prevCl.setMaxChurn(cl.getChurn());
+            }
+            if(prevCl.getMaxLocAdded()<cl.getLocAdded()){
+                prevCl.setMaxLocAdded((long)cl.getLocAdded());
+            }
+            prevCl.setNr(prevCl.getNr()+cl.getNr());
             prevCl.setAuthors(cl.getAuthors());
             if(buggy){
-                prevCl.setnFix(prevCl.getnFix()+1);
+                prevCl.setnFix(prevCl.getnFix()+cl.getnFix());
             }
             prevCl.setBuggy(buggy);
         }
@@ -175,11 +183,28 @@ public class Version {
                 System.out.println(ver.getVersionDate());
             }
             System.out.println("\n");
-            return versions.get(0);
+            return versions.get(versions.size()-1);
         }
         return finalVersion;
     }
 
+    public void setBuggyClasses(List<Classes> classes){
+        if(this.classes == null){
+            this.classes = classes;
+                for (Classes cl: this.classes) {
+                    cl.setBuggy(true);
+                }
+            return;
+        }
+        for (Classes cl : classes){
+            if(!this.classes.contains(cl)){
+                this.classes.add(cl);
+                continue;
+            }
+            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            prevCl.setBuggy(true);
+        }
+    }
     public static Integer toEpochVersion(List<Version> versions, Version version){
         int epochVersion = 0;
         for (Version ver: versions){

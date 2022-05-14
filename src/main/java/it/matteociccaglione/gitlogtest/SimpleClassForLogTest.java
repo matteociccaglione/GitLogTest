@@ -44,6 +44,7 @@ public class SimpleClassForLogTest {
             System.out.println(version.toString());
         }
         List<Issue> bugs = JiraManager.retrieveIssues("ZOOKEEPER");
+        bugs.sort(new Issue.IssueComparator());
         GitLogMiningClass gitLog = GitLogMiningClass.getInstance("/home/utente/zookeeper/.git");
         //Now for each bug search commit with this bug id
         List<Issue> copyBugs = List.copyOf(bugs);
@@ -82,8 +83,12 @@ public class SimpleClassForLogTest {
                 Version version = Version.getVersionByDate(affectedVersion,commitDate);
                 assert version != null;
                 version.setClasses(classes,true);
+                for (Version v : affectedVersion){
+                    v.setBuggyClasses(classes);
+                }
             }
         }
+        System.out.println("Start with av computation");
         for (Issue bug: bugs){
             List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
             List<Version> affectedVersion = new ArrayList<>();
@@ -118,6 +123,9 @@ public class SimpleClassForLogTest {
                 Version version = Version.getVersionByDate(affectedVersion,commitDate);
                 assert version != null;
                 version.setClasses(classes,true);
+                for (Version v : affectedVersion){
+                    v.setBuggyClasses(classes);
+                }
             }
         }
         List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
@@ -129,13 +137,6 @@ public class SimpleClassForLogTest {
                 continue;
             }
             version.setClasses(classes,false);
-        }
-        Version prevVersion = null;
-        for (Version version: versionToUse){
-            if(prevVersion!=null){
-                version.setClasses(prevVersion.getClasses());
-            }
-            prevVersion = version;
         }
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
         FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/zookeeper.csv",versionToUse,header);

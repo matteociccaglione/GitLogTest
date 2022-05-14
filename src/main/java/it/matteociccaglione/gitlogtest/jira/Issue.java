@@ -1,5 +1,6 @@
 package it.matteociccaglione.gitlogtest.jira;
 
+import java.util.Comparator;
 import java.util.List;
 
 public class Issue {
@@ -55,5 +56,17 @@ public class Issue {
 
     public void setResolvedDate(String resolvedDate) {
         this.resolvedDate = resolvedDate;
+    }
+    public static class IssueComparator implements Comparator<Issue> {
+
+        @Override
+        public int compare(Issue issue, Issue i1) {
+            return issue.getResolvedDate().compareTo(i1.getResolvedDate());
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            return false;
+        }
     }
 }
