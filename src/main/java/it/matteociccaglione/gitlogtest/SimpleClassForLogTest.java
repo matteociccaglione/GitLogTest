@@ -4,6 +4,9 @@ import it.matteociccaglione.gitlogtest.jira.Classes;
 import it.matteociccaglione.gitlogtest.jira.Issue;
 import it.matteociccaglione.gitlogtest.jira.JiraManager;
 import it.matteociccaglione.gitlogtest.jira.Version;
+import it.matteociccaglione.gitlogtest.weka.Classifiers;
+import it.matteociccaglione.gitlogtest.weka.WekaManager;
+import it.matteociccaglione.gitlogtest.weka.WekaResults;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 
@@ -91,29 +94,11 @@ public class SimpleClassForLogTest {
         System.out.println("Start with av computation");
         for (Issue bug: bugs){
             List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-            List<Version> affectedVersion = new ArrayList<>();
-            Date commitDate = Date.from(Instant.ofEpochSecond(commits.get(0).getCommit().getCommitTime()));
-            Version fixedVersion = Version.getVersionByDate(versionToUse,commitDate);
-            if(fixedVersion==null){
+            List<Version> affectedVersion = proportion(versionToUse,bug,commits.get(0));
+            if(affectedVersion==null){
                 continue;
             }
-            Integer numberOfFix = 0;
-            int numberOfVer = 0;
-            for (Version ver: versionToUse){
-                if(ver.getVersionDate().equals(fixedVersion.getVersionDate())){
-                    break;
-                }
-                numberOfFix+=ver.getNumberOfBugFixed();
-                numberOfVer++;
-            }
-            float proportion = numberOfFix/ (float) numberOfVer;
-            Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getCreatedDate().substring(0,11));
-            Version openingVersion = Version.getVersionByDate(versionToUse,bugDate);
-            int ivEpoch = Math.round(Version.toEpochVersion(versionToUse,fixedVersion) - (Version.toEpochVersion(versionToUse,fixedVersion)-Version.toEpochVersion(versionToUse,openingVersion))*proportion);
-            Version injectedVersion = versionToUse.get(ivEpoch);
-            for (int i = ivEpoch; i < Version.toEpochVersion(versionToUse,fixedVersion); i++){
-                affectedVersion.add(versionToUse.get(i));
-            }
+            Date commitDate;
             for (GitLogMiningClass.Commit commit: commits){
                 List<Classes> classes = gitLog.getFileModified(commit);
                 if(classes.size() == 0){
@@ -142,6 +127,108 @@ public class SimpleClassForLogTest {
         FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/zookeeper.csv",versionToUse,header);
         fb.toFlat("/home/utente/Scrivania/zookeeper.arff");
 
+        System.out.println("Starting walk-forward");
+    }
+    private static List<Version> proportion(List<Version> versionToUse, Issue bug, GitLogMiningClass.Commit commit) throws ParseException {
+        Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+        Version fixedVersion = Version.getVersionByDate(versionToUse,commitDate);
+        if(fixedVersion==null){
+            return null;
+        }
+        List<Version> affectedVersion = new ArrayList<>();
+        Integer numberOfFix = 0;
+        int numberOfVer = 0;
+        for (Version ver: versionToUse){
+            if(ver.getVersionDate().equals(fixedVersion.getVersionDate())){
+                break;
+            }
+            numberOfFix+=ver.getNumberOfBugFixed();
+            numberOfVer++;
+        }
+        float proportion = numberOfFix/ (float) numberOfVer;
+        Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getCreatedDate().substring(0,11));
+        Version openingVersion = Version.getVersionByDate(versionToUse,bugDate);
+        int ivEpoch = Math.round(Version.toEpochVersion(versionToUse,fixedVersion) - (Version.toEpochVersion(versionToUse,fixedVersion)-Version.toEpochVersion(versionToUse,openingVersion))*proportion);
+        Version injectedVersion = versionToUse.get(ivEpoch);
+        for (int i = ivEpoch; i < Version.toEpochVersion(versionToUse,fixedVersion); i++){
+            affectedVersion.add(versionToUse.get(i));
+        }
+        return affectedVersion;
+    }
+    private static void walkForward(String file, List<Version> versionToUse) throws Exception {
 
+        List<List<Version>> trainingSets = new ArrayList<>();
+        List<Version> testingSets = new ArrayList<>();
+        List<Version> trainingVersion = new ArrayList<>();
+        List<Version> testingVersion = new ArrayList<>();
+        List<Issue> bugs = JiraManager.retrieveIssues("ZOOKEEPER");
+        for (int i = 0; i < versionToUse.size()-1; i++){
+            int trainingStart = i-1;
+            int testingStart = i;
+            if(trainingStart>=0){
+                List<Version> trainingSet = new ArrayList<>();
+                for (int j = trainingStart; j < testingStart; j++){
+                    trainingSet.add(versionToUse.get(j).getCopyWithoutCommits());
+                }
+                bugs.sort(new Issue.IssueComparator());
+                GitLogMiningClass gitLog = GitLogMiningClass.getInstance("/home/utente/zookeeper/.git");
+                for (Issue bug : bugs){
+                    Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0,11));
+                    Date lastDate = trainingSet.get(testingStart-1).getVersionDate();
+                    if(bugDate.after(lastDate)){
+                        break;
+                    }
+                    List< GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
+                    List<Version> affectedVersion = new ArrayList<>();
+                    if(bug.getVersion()!=null){
+                        List<Version> av = bug.getVersion();
+                        for(Version a: av) {
+                            for (Version ver : trainingSet) {
+                                if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
+                                    affectedVersion.add(ver);
+                                    ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
+                                }
+                            }
+                        }
+                    }
+                    else{
+                        affectedVersion = proportion(trainingSet,bug,commits.get(0));
+                    }
+                    for (GitLogMiningClass.Commit commit: commits){
+
+                        List<Classes> classes = gitLog.getFileModified(commit);
+                        if(classes.size() == 0){
+                            continue;
+                        }
+                        Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+                        Version version = Version.getVersionByDate(affectedVersion,commitDate);
+                        assert version != null;
+                        version.setClasses(classes,true);
+                        for (Version v : affectedVersion){
+                            v.setBuggyClasses(classes);
+                        }
+                    }
+                }
+                trainingSets.add(trainingSet);
+            }
+            testingSets.add(versionToUse.get(testingStart));
+            WekaResults nb = performWeka(Classifiers.NaiveBayes,trainingSets,testingSets);
+            WekaResults ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets);
+            WekaResults rf = performWeka(Classifiers.RandomForest, trainingSets,testingSets);
+        }
+
+    }
+    private static WekaResults performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet) throws Exception {
+        WekaResults wr = new WekaResults(0d,0d,0d,0d, classifier);
+        for (int i = 0; i<trainingSets.size(); i++){
+            String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
+            String testingFile = WekaManager.toArff(List.of(testingSet.get(i)), "/home/utente/Scrivania/testing.csv");
+            WekaResults wr1 = WekaManager.classifier(trainingFile,testingFile,classifier);
+            wr.setAUC(wr.getAUC()+wr1.getAUC());
+            wr.setRecall(wr.getRecall()+wr1.getRecall());
+            wr.setPrecision(wr.getPrecision()+wr1.getPrecision());
+            wr.setKappa(wr.getKappa()+wr1.getKappa());
+        }
+        return wr;
     }
 }

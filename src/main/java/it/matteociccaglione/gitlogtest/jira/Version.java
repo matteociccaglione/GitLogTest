@@ -94,7 +94,9 @@ public class Version {
         this.versionDate = versionDate;
         this.released = released;
     }
-
+    public Version getCopyWithoutCommits(){
+        return new Version(this.versionNumber,this.versionDate,this.released);
+    }
     public String getVersionNumber() {
         return versionNumber;
     }
