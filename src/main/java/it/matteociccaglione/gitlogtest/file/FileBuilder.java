@@ -2,6 +2,7 @@ package it.matteociccaglione.gitlogtest.file;
 
 import it.matteociccaglione.gitlogtest.jira.Classes;
 import it.matteociccaglione.gitlogtest.jira.Version;
+import it.matteociccaglione.gitlogtest.weka.WekaResults;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -101,4 +102,16 @@ public class FileBuilder {
         fw.close();
     }
 
+    public static void buildWekaCsv(List<List<WekaResults>> results, String header, String datasetName, String fileName) throws IOException {
+        StringBuilder fileContent = new StringBuilder(header).append("\n");
+        for (int i = 0; i < results.get(0).size(); i++){
+            for (List<WekaResults> wekaResults : results) {
+                WekaResults result = wekaResults.get(i);
+                fileContent.append(datasetName).append(",").append(result.getnReleases()).append(",").append(result.getClassifier().toString()).append(",").append(result.getPrecision()).append(",").append(result.getRecall()).append(",").append(result.getAUC()).append(",").append(result.getKappa()).append("\n");
+
+            }
+        }
+        FileWriter fileWriter = new FileWriter(fileName);
+        fileWriter.write(fileContent.toString());
+    }
 }

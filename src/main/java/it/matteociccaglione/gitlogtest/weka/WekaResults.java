@@ -7,7 +7,7 @@ public class WekaResults {
     private Double recall;
     private Double precision;
     private Double kappa;
-
+    private int nReleases;
     private Classifiers classifier;
 
     public Classifiers getClassifier() {
@@ -18,12 +18,21 @@ public class WekaResults {
         this.classifier = classifier;
     }
 
+    public int getnReleases() {
+        return nReleases;
+    }
+
+    public void setnReleases(int nReleases) {
+        this.nReleases = nReleases;
+    }
+
     public WekaResults(Double AUC, Double recall, Double precision, Double kappa, Classifiers classifier) {
         this.AUC = AUC;
         this.recall = recall;
         this.precision = precision;
         this.kappa = kappa;
         this.classifier = classifier;
+        this.nReleases = 0;
     }
 
     public Double getAUC() {

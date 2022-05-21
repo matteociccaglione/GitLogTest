@@ -36,9 +36,11 @@ public class Version {
             prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
             prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
             prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
+            System.out.println(prevCl.getMaxChurn().toString());
             if(prevCl.getMaxChurn()<cl.getChurn()){
                 prevCl.setMaxChurn(cl.getChurn());
             }
+            System.out.println(prevCl.getMaxChurn().toString());
             if(prevCl.getMaxLocAdded()<cl.getLocAdded()){
                 prevCl.setMaxLocAdded((long)cl.getLocAdded());
             }

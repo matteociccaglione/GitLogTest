@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class SimpleClassForLogTest {
-    public static void main(String[] args) throws IOException, ParseException, GitAPIException {
+    public static void main(String[] args) throws Exception {
         /*
         System.out.println("This is the first commit");
         System.out.println("Added new print");
@@ -123,11 +123,19 @@ public class SimpleClassForLogTest {
             }
             version.setClasses(classes,false);
         }
+        for (Version version: versionToUse){
+            List<Classes> cls = version.getClasses();
+            for (Classes cl: cls){
+                cl.setAvgChurn((float) (cl.getChurn()/cl.getNr()));
+                cl.setAvgLocAdded((float) (cl.getLocAdded()/cl.getNr()));
+            }
+        }
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
         FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/zookeeper.csv",versionToUse,header);
         fb.toFlat("/home/utente/Scrivania/zookeeper.arff");
 
         System.out.println("Starting walk-forward");
+        walkForward("/home/utente/Scrivania/zookeeper.csv",versionToUse);
     }
     private static List<Version> proportion(List<Version> versionToUse, Issue bug, GitLogMiningClass.Commit commit) throws ParseException {
         Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
@@ -212,22 +220,22 @@ public class SimpleClassForLogTest {
                 trainingSets.add(trainingSet);
             }
             testingSets.add(versionToUse.get(testingStart));
-            WekaResults nb = performWeka(Classifiers.NaiveBayes,trainingSets,testingSets);
-            WekaResults ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets);
-            WekaResults rf = performWeka(Classifiers.RandomForest, trainingSets,testingSets);
+            List<WekaResults> nb = performWeka(Classifiers.NaiveBayes,trainingSets,testingSets);
+            List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets);
+            List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets,testingSets);
+            FileBuilder.buildWekaCsv(List.of(nb,ibk,rf),"Dataset,#TrainingRelease,Classifier,Precision,Recall,AUC,Kappa","ZOOKEEPER","/home/utente/Scrivania/zoookeeperWekaResult.csv");
+
         }
 
     }
-    private static WekaResults performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet) throws Exception {
-        WekaResults wr = new WekaResults(0d,0d,0d,0d, classifier);
+    private static List<WekaResults> performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet) throws Exception {
+        List<WekaResults> wr = new ArrayList<>();
         for (int i = 0; i<trainingSets.size(); i++){
             String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
             String testingFile = WekaManager.toArff(List.of(testingSet.get(i)), "/home/utente/Scrivania/testing.csv");
             WekaResults wr1 = WekaManager.classifier(trainingFile,testingFile,classifier);
-            wr.setAUC(wr.getAUC()+wr1.getAUC());
-            wr.setRecall(wr.getRecall()+wr1.getRecall());
-            wr.setPrecision(wr.getPrecision()+wr1.getPrecision());
-            wr.setKappa(wr.getKappa()+wr1.getKappa());
+            wr1.setnReleases(trainingSets.get(i).size());
+            wr.add(wr1);
         }
         return wr;
     }
