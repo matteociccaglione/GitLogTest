@@ -36,12 +36,10 @@ public class Version {
             prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
             prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
             prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
-            System.out.println(prevCl.getMaxChurn().toString());
             if(prevCl.getMaxChurn()<cl.getChurn()){
                 prevCl.setMaxChurn(cl.getChurn());
             }
-            System.out.println(prevCl.getMaxChurn().toString());
-            if(prevCl.getMaxLocAdded()<cl.getLocAdded()){
+            if(prevCl.getMaxLocAdded()<(long)cl.getLocAdded()){
                 prevCl.setMaxLocAdded((long)cl.getLocAdded());
             }
             prevCl.setNr(prevCl.getNr()+cl.getNr());
@@ -60,7 +58,14 @@ public class Version {
             return;
         }
         for (Classes cl : classes){
-            if(!this.classes.contains(cl)){
+            boolean found = false;
+            for (Classes pcl: this.classes){
+                if(pcl.getName()==cl.getName()){
+                    found = true;
+                    break;
+                }
+            }
+            if(!found){
                 this.classes.add(cl);
                 continue;
             }
@@ -182,11 +187,8 @@ public class Version {
             }
         }
         if(finalVersion==null){
-            System.out.println(date.toString());
             for (Version ver: versions){
-                System.out.println(ver.getVersionDate());
             }
-            System.out.println("\n");
             return versions.get(versions.size()-1);
         }
         return finalVersion;

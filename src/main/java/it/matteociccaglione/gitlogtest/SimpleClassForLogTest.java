@@ -9,6 +9,9 @@ import it.matteociccaglione.gitlogtest.weka.WekaManager;
 import it.matteociccaglione.gitlogtest.weka.WekaResults;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
+import weka.classifiers.bayes.NaiveBayes;
+import weka.classifiers.lazy.IBk;
+import weka.classifiers.trees.RandomForest;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -16,10 +19,7 @@ import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class SimpleClassForLogTest {
     public static void main(String[] args) throws Exception {
@@ -86,6 +86,7 @@ public class SimpleClassForLogTest {
                 Version version = Version.getVersionByDate(affectedVersion,commitDate);
                 assert version != null;
                 version.setClasses(classes,true);
+                List<Classes> cls = version.getClasses();
                 for (Version v : affectedVersion){
                     v.setBuggyClasses(classes);
                 }
@@ -166,77 +167,110 @@ public class SimpleClassForLogTest {
     private static void walkForward(String file, List<Version> versionToUse) throws Exception {
 
         List<List<Version>> trainingSets = new ArrayList<>();
-        List<Version> testingSets = new ArrayList<>();
+        Map<String,List<Version>> map = new HashMap<>();
         List<Version> trainingVersion = new ArrayList<>();
         List<Version> testingVersion = new ArrayList<>();
+        List<Version> testingSets = new ArrayList<>();
         List<Issue> bugs = JiraManager.retrieveIssues("ZOOKEEPER");
-        for (int i = 0; i < versionToUse.size()-1; i++){
-            int trainingStart = i-1;
+        bugs.sort(new Issue.IssueComparator());
+
+        for(int i = 0; i < versionToUse.size(); i++) {
+            List<Version> trainingSet = new ArrayList<>();
             int testingStart = i;
-            if(trainingStart>=0){
-                List<Version> trainingSet = new ArrayList<>();
-                for (int j = trainingStart; j < testingStart; j++){
-                    trainingSet.add(versionToUse.get(j).getCopyWithoutCommits());
-                }
-                bugs.sort(new Issue.IssueComparator());
-                GitLogMiningClass gitLog = GitLogMiningClass.getInstance("/home/utente/zookeeper/.git");
-                for (Issue bug : bugs){
-                    Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0,11));
-                    Date lastDate = trainingSet.get(testingStart-1).getVersionDate();
-                    if(bugDate.after(lastDate)){
-                        break;
-                    }
-                    List< GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-                    List<Version> affectedVersion = new ArrayList<>();
-                    if(bug.getVersion()!=null){
-                        List<Version> av = bug.getVersion();
-                        for(Version a: av) {
-                            for (Version ver : trainingSet) {
-                                if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
-                                    affectedVersion.add(ver);
-                                    ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
-                                }
-                            }
-                        }
-                    }
-                    else{
-                        affectedVersion = proportion(trainingSet,bug,commits.get(0));
-                    }
-                    for (GitLogMiningClass.Commit commit: commits){
-
-                        List<Classes> classes = gitLog.getFileModified(commit);
-                        if(classes.size() == 0){
-                            continue;
-                        }
-                        Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-                        Version version = Version.getVersionByDate(affectedVersion,commitDate);
-                        assert version != null;
-                        version.setClasses(classes,true);
-                        for (Version v : affectedVersion){
-                            v.setBuggyClasses(classes);
-                        }
-                    }
-                }
-                trainingSets.add(trainingSet);
+            for (int j = 0; j < testingStart; j++) {
+                trainingSet.add(versionToUse.get(j).getCopyWithoutCommits());
             }
+            trainingSets.add(trainingSet);
             testingSets.add(versionToUse.get(testingStart));
-            List<WekaResults> nb = performWeka(Classifiers.NaiveBayes,trainingSets,testingSets);
-            List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets);
-            List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets,testingSets);
-            FileBuilder.buildWekaCsv(List.of(nb,ibk,rf),"Dataset,#TrainingRelease,Classifier,Precision,Recall,AUC,Kappa","ZOOKEEPER","/home/utente/Scrivania/zoookeeperWekaResult.csv");
-
+            map.put(versionToUse.get(testingStart).getVersionNumber(),trainingSet);
         }
+        GitLogMiningClass gitLog = GitLogMiningClass.getInstance("/home/utente/zookeeper/.git");
+        for (Issue bug : bugs) {
+            Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
+            Version version = Version.getVersionByDate(versionToUse, bugDate);
+            List<Version> trainingSet = null;
+            if (map.containsKey(version.getVersionNumber())) {
+                trainingSet = map.get(version.getVersionNumber());
+            }
+            if (trainingSet == null) {
+                continue;
+            }
+            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
+            List<Version> affectedVersion = new ArrayList<>();
+            if (bug.getVersion() != null) {
+                List<Version> av = bug.getVersion();
+                for (Version a : av) {
+                    for (Version ver : trainingSet) {
+                        if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
+                            affectedVersion.add(ver);
+                            ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
+                        }
+                    }
+                }
+            } else {
+                affectedVersion = proportion(trainingSet, bug, commits.get(0));
+            }
+            if (affectedVersion.isEmpty()) {
+                continue;
+            }
+            for (GitLogMiningClass.Commit commit : commits) {
 
-    }
+                List<Classes> classes = gitLog.getFileModified(commit);
+                if (classes.size() == 0) {
+                    continue;
+                }
+                Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+                version = Version.getVersionByDate(affectedVersion, commitDate);
+                assert version != null;
+                version.setClasses(classes, true);
+                for (Version v : affectedVersion) {
+                    v.setBuggyClasses(classes);
+                }
+            }
+        }
+        List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
+        for (GitLogMiningClass.Commit commit: commits){
+            List<Classes> classes = gitLog.getFileModified(commit);
+            if(classes.size() == 0){
+                continue;
+            }
+            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+            Version version = Version.getVersionByDate(versionToUse, commitDate);
+            for (int i = 0; i < trainingSets.size(); i++){
+               for (int j = 0; j < trainingSets.get(i).size(); j++){
+                   if(version.getVersionNumber().equalsIgnoreCase(trainingSets.get(i).get(j).getVersionNumber())){
+                       trainingSets.get(i).get(j).setClasses(classes);
+                   }
+               }
+            }
+        }
+        List<WekaResults> nb = performWeka(Classifiers.NaiveBayes,trainingSets,testingSets);
+        List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets);
+        List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets,testingSets);
+        FileBuilder.buildWekaCsv(List.of(nb,ibk,rf),"Dataset,#TrainingRelease,Classifier,Precision,Recall,AUC,Kappa","ZOOKEEPER","/home/utente/Scrivania/zoookeeperWekaResult.csv");
+        }
     private static List<WekaResults> performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet) throws Exception {
         List<WekaResults> wr = new ArrayList<>();
-        for (int i = 0; i<trainingSets.size(); i++){
+        weka.classifiers.Classifier cl = new NaiveBayes();
+        if(classifier==Classifiers.Ibk){
+            cl = new IBk();
+        }
+        if(classifier==Classifiers.NaiveBayes){
+            cl = new NaiveBayes();
+        }
+        if(classifier == Classifiers.RandomForest){
+            cl = new RandomForest();
+        }
+        for (int i = 1; i<trainingSets.size(); i++){
             String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
             String testingFile = WekaManager.toArff(List.of(testingSet.get(i)), "/home/utente/Scrivania/testing.csv");
-            WekaResults wr1 = WekaManager.classifier(trainingFile,testingFile,classifier);
+            WekaResults wr1 = WekaManager.classifier(trainingFile,testingFile,cl,classifier);
             wr1.setnReleases(trainingSets.get(i).size());
             wr.add(wr1);
         }
         return wr;
+    }
+    private static void computeIssues(List<Version> versionToUse, List<Issue> bugs){
+
     }
 }

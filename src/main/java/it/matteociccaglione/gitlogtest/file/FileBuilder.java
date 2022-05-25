@@ -81,6 +81,7 @@ public class FileBuilder {
         }
         FileWriter fw = new FileWriter(filename);
         StringBuilder fileContent = new StringBuilder();
+        fileContent.append("@relation ").append("zookeeper").append("\n");
         for (String at : attributes){
             fileContent.append("@attribute ").append(at);
             if(atValueMap.get(at).size()==1 && Objects.equals(atValueMap.get(at).get(0), "Numeric")){
@@ -88,13 +89,22 @@ public class FileBuilder {
             }
             else{
                 fileContent.append(" {");
-                for (String val : atValueMap.get(at)){
-                    fileContent.append(val).append(",");
+                if(at.equals("Buggy")){
+                    fileContent.append("true").append(",").append("false");
+                }
+                else {
+                    for (int i = 0; i < atValueMap.get(at).size(); i++) {
+                        String val = atValueMap.get(at).get(i);
+                        fileContent.append(val);
+                        if (i != atValueMap.get(at).size() - 1) {
+                            fileContent.append(",");
+                        }
+                    }
                 }
                 fileContent.append("}\n");
             }
         }
-        fileContent.append("\n\n").append("@data");
+        fileContent.append("\n\n").append("@data\n");
         for (String dat : data){
             fileContent.append(dat).append("\n");
         }
@@ -108,10 +118,10 @@ public class FileBuilder {
             for (List<WekaResults> wekaResults : results) {
                 WekaResults result = wekaResults.get(i);
                 fileContent.append(datasetName).append(",").append(result.getnReleases()).append(",").append(result.getClassifier().toString()).append(",").append(result.getPrecision()).append(",").append(result.getRecall()).append(",").append(result.getAUC()).append(",").append(result.getKappa()).append("\n");
-
             }
         }
         FileWriter fileWriter = new FileWriter(fileName);
         fileWriter.write(fileContent.toString());
+        fileWriter.close();
     }
 }

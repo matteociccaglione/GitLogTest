@@ -26,21 +26,18 @@ public class WekaManager {
         return sb.toString();
     }
 
-    public static WekaResults classifier(String training,String testing, Classifiers classifier) throws Exception {
+    public static WekaResults classifier(String training,String testing, weka.classifiers.Classifier classifier, Classifiers classifiers) throws Exception {
         ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(training);
         Instances iTraining = dataTraining.getDataSet();
         ConverterUtils.DataSource dataTesting = new ConverterUtils.DataSource(testing);
         Instances iTesting = dataTesting.getDataSet();
-        weka.classifiers.Classifier cl = null;
-        switch (classifier){
-            case NaiveBayes:cl = new NaiveBayes();
-            case Ibk: cl = new IBk();
-            case RandomForest: cl = new RandomForest();
-        }
+        weka.classifiers.Classifier cl = classifier;
+        iTraining.setClassIndex(iTraining.numAttributes()-1);
         cl.buildClassifier(iTraining);
+        iTesting.setClassIndex(iTesting.numAttributes()-1);
         Evaluation eval = new Evaluation(iTesting);
         eval.evaluateModel(cl,iTesting);
-        return new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifier);
+        return new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifiers);
 
     }
 }

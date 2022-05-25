@@ -146,8 +146,11 @@ public class GitLogMiningClass {
             cl.setLocTouched(cl.getLocTouched()+linesAdded+linesDeleted);
             cl.setChurn(cl.getChurn()+linesAdded-linesDeleted);
             cl.setAuthors(List.of(commit.getCommit().getAuthorIdent().getName()));
+            cl.setMaxChurn(cl.getMaxChurn());
+            cl.setMaxLocAdded((long)cl.getLocAdded());
             cl.setNr(1);
             cl.setnFix(1);
+
         }
         git.close();
         return classes;
