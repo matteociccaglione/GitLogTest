@@ -1,10 +1,13 @@
 it/matteociccaglione/gitlogtest/GitLogMiningClass$Commit.class
-it/matteociccaglione/gitlogtest/jira/Issue$IssueComparator.class
-it/matteociccaglione/gitlogtest/jira/JiraManager.class
 it/matteociccaglione/gitlogtest/jira/Version$VersionComparator.class
 it/matteociccaglione/gitlogtest/jira/Version.class
-it/matteociccaglione/gitlogtest/jira/Issue.class
-it/matteociccaglione/gitlogtest/SimpleClassForLogTest.class
 it/matteociccaglione/gitlogtest/jira/Classes.class
 it/matteociccaglione/gitlogtest/file/FileBuilder.class
+it/matteociccaglione/gitlogtest/weka/WekaResults.class
+it/matteociccaglione/gitlogtest/jira/Issue$IssueComparator.class
+it/matteociccaglione/gitlogtest/jira/JiraManager.class
+it/matteociccaglione/gitlogtest/jira/Issue.class
+it/matteociccaglione/gitlogtest/SimpleClassForLogTest.class
+it/matteociccaglione/gitlogtest/weka/Classifiers.class
+it/matteociccaglione/gitlogtest/weka/WekaManager.class
 it/matteociccaglione/gitlogtest/GitLogMiningClass.class
