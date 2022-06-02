@@ -134,6 +134,10 @@ public class GitLogMiningClass {
                 //ignore non .java files
                 continue;
             }
+            if(fileName.contains("/test/")){
+                //ignore file in test directories
+                continue;
+            }
             Classes cl = new Classes(fileName);
             classes.add(cl);
             Integer linesDeleted = 0;

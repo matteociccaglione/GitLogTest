@@ -29,7 +29,7 @@ public class WekaManager {
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
         FileBuilder fb = FileBuilder.build(filename,versions,header);
         StringBuilder sb = new StringBuilder();
-        sb.append(filename, 0, filename.length()-3).append(".arff");
+        sb.append(filename, 0, filename.length()-4).append(".arff");
         fb.toFlat(sb.toString());
         File f = new File(filename);
         f.delete();
@@ -48,6 +48,7 @@ public class WekaManager {
         weka.classifiers.Classifier cl = classifier;
         iTraining.setClassIndex(iTraining.numAttributes()-1);
         cl.buildClassifier(iTraining);
+
         iTesting.setClassIndex(iTesting.numAttributes()-1);
         Evaluation eval = new Evaluation(iTesting);
         eval.evaluateModel(cl,iTesting);
@@ -57,8 +58,13 @@ public class WekaManager {
     public static WekaResults sampling(String training, String testing, weka.classifiers.Classifier classifier, Classifiers classifiers, SamplingMethods samplingMethods) throws Exception {
         ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(training);
         Instances iTraining = dataTraining.getDataSet();
+        iTraining.setClassIndex(iTraining.numAttributes()-1);
         ConverterUtils.DataSource dataTesting = new ConverterUtils.DataSource(testing);
         Instances iTesting = dataTesting.getDataSet();
+        iTesting.setClassIndex(iTesting.numAttributes()-1);
+        return sampling(iTraining,iTesting,classifier,classifiers,samplingMethods);
+    }
+    public static WekaResults sampling(Instances iTraining, Instances iTesting, weka.classifiers.Classifier classifier, Classifiers classifiers, SamplingMethods samplingMethods) throws Exception {
         Resample resample = new Resample();
         SpreadSubsample spreadSubsample = new SpreadSubsample();
         resample.setInputFormat(iTraining);
@@ -68,17 +74,25 @@ public class WekaManager {
             fc.setFilter(resample);
         }
         if(samplingMethods == SamplingMethods.SPREADSUBSAMPLE){
+            String[] opts = new String[]{ "-M", "1.0"};
+            spreadSubsample.setOptions(opts);
             fc.setFilter(spreadSubsample);
         }
         fc.buildClassifier(iTraining);
         Evaluation eval = new Evaluation(iTesting);
         eval.evaluateModel(fc,iTesting);
-        return new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifiers);
+        WekaResults wr =  new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifiers);
+        wr.setTn(eval.numTrueNegatives(1));
+        wr.setTp(eval.numTruePositives(1));
+        wr.setFp(eval.numFalsePositives(1));
+        wr.setFn(eval.numFalseNegatives(1));
+        return wr;
     }
 
-    public static Instances featureSelection(String dataSource, boolean backward) throws Exception {
+    public static List<Instances> featureSelection(String dataSource, boolean backward, String testingSet) throws Exception {
         ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(dataSource);
         Instances iTraining = dataTraining.getDataSet();
+        iTraining.setClassIndex(iTraining.numAttributes()-1);
         CfsSubsetEval eval = new CfsSubsetEval();
         AttributeSelection filter = new AttributeSelection();
         GreedyStepwise search = new GreedyStepwise();
@@ -87,6 +101,10 @@ public class WekaManager {
         filter.setSearch(search);
         filter.setInputFormat(iTraining);
         Instances filteredTraining = Filter.useFilter(iTraining,filter);
-        return filteredTraining;
+        filteredTraining.setClassIndex(filteredTraining.numAttributes()-1);
+        Instances noFilterTesting = new ConverterUtils.DataSource(dataSource).getDataSet();
+        Instances filteredTesting = Filter.useFilter(noFilterTesting,filter);
+        filteredTesting.setClassIndex(filteredTraining.numAttributes()-1);
+        return List.of(filteredTraining,filteredTesting);
     }
 }

@@ -46,6 +46,9 @@ public class FileBuilder {
         BufferedReader br = new BufferedReader(new InputStreamReader(new FileInputStream(csv)));
         String header = br.readLine();
         String[] columns = header.split(",");
+        String[] path = filename.split("/");
+        System.out.println(path[path.length-1]);
+        String projectName = path[path.length-1].split("\\.")[0];
         List<String> attributes = new ArrayList<>(Arrays.asList(columns).subList(2, columns.length));
         Map<String,List<String>> atValueMap = new HashMap<>();
         List<String> data = new ArrayList<>();
@@ -81,7 +84,7 @@ public class FileBuilder {
         }
         FileWriter fw = new FileWriter(filename);
         StringBuilder fileContent = new StringBuilder();
-        fileContent.append("@relation ").append("zookeeper").append("\n");
+        fileContent.append("@relation ").append(projectName.toLowerCase()).append("\n");
         for (String at : attributes){
             fileContent.append("@attribute ").append(at);
             if(atValueMap.get(at).size()==1 && Objects.equals(atValueMap.get(at).get(0), "Numeric")){
@@ -117,7 +120,7 @@ public class FileBuilder {
         for (int i = 0; i < results.get(0).size(); i++){
             for (List<WekaResults> wekaResults : results) {
                 WekaResults result = wekaResults.get(i);
-                fileContent.append(datasetName).append(",").append(result.getnReleases()).append(",").append(result.getClassifier().toString()).append(",").append(result.getPrecision()).append(",").append(result.getRecall()).append(",").append(result.getAUC()).append(",").append(result.getKappa()).append("\n");
+                fileContent.append(datasetName).append(",").append(result.getnReleases()).append(",").append(result.getPerTraining()).append(",").append(result.getPerDefTraining()).append(",").append(result.getPerDefTesting()).append(",").append(result.getClassifier().toString()).append(",").append(result.getBalancing()).append(",").append(result.getFeatureSelection()).append(",").append(result.getTp()).append(",").append(result.getFp()).append(",").append(result.getTn()).append(",").append(result.getFn()).append(",").append(result.getPrecision()).append(",").append(result.getRecall()).append(",").append(result.getAUC()).append(",").append(result.getKappa()).append("\n");
             }
         }
         FileWriter fileWriter = new FileWriter(fileName);

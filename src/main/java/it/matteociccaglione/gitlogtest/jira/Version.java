@@ -211,6 +211,22 @@ public class Version {
             prevCl.setBuggy(true);
         }
     }
+    public static float getPercentageDefective(List<Version> versions){
+        float nDefective = 0;
+        float nTotal = 0;
+        for(Version ver: versions) {
+            if(ver.classes==null){
+                continue;
+            }
+            for (Classes cls : ver.classes) {
+                if (cls.getBuggy()) {
+                    nDefective++;
+                }
+                nTotal++;
+            }
+        }
+        return nDefective/nTotal;
+    }
     public static Integer toEpochVersion(List<Version> versions, Version version){
         int epochVersion = 0;
         for (Version ver: versions){
