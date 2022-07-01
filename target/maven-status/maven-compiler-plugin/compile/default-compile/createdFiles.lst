@@ -1,7 +1,9 @@
 it/matteociccaglione/gitlogtest/GitLogMiningClass$Commit.class
+it/matteociccaglione/gitlogtest/weka/SamplingMethods.class
 it/matteociccaglione/gitlogtest/jira/Version$VersionComparator.class
 it/matteociccaglione/gitlogtest/jira/Version.class
 it/matteociccaglione/gitlogtest/jira/Classes.class
+it/matteociccaglione/gitlogtest/weka/CostSensitiveType.class
 it/matteociccaglione/gitlogtest/file/FileBuilder.class
 it/matteociccaglione/gitlogtest/weka/WekaResults.class
 it/matteociccaglione/gitlogtest/jira/Issue$IssueComparator.class

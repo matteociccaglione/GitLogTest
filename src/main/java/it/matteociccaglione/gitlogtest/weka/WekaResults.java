@@ -18,6 +18,15 @@ public class WekaResults {
     private double tn;
     private double fp;
     private double fn;
+    private CostSensitiveType costSensitiveType;
+
+    public CostSensitiveType getCostSensitiveType() {
+        return costSensitiveType;
+    }
+
+    public void setCostSensitiveType(CostSensitiveType costSensitiveType) {
+        this.costSensitiveType = costSensitiveType;
+    }
 
     public float getPerTraining() {
         return perTraining;

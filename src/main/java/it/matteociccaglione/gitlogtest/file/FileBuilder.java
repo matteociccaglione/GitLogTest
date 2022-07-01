@@ -120,7 +120,7 @@ public class FileBuilder {
         for (int i = 0; i < results.get(0).size(); i++){
             for (List<WekaResults> wekaResults : results) {
                 WekaResults result = wekaResults.get(i);
-                fileContent.append(datasetName).append(",").append(result.getnReleases()).append(",").append(result.getPerTraining()).append(",").append(result.getPerDefTraining()).append(",").append(result.getPerDefTesting()).append(",").append(result.getClassifier().toString()).append(",").append(result.getBalancing()).append(",").append(result.getFeatureSelection()).append(",").append(result.getTp()).append(",").append(result.getFp()).append(",").append(result.getTn()).append(",").append(result.getFn()).append(",").append(result.getPrecision()).append(",").append(result.getRecall()).append(",").append(result.getAUC()).append(",").append(result.getKappa()).append("\n");
+                fileContent.append(datasetName).append(",").append(result.getnReleases()).append(",").append(result.getPerTraining()).append(",").append(result.getPerDefTraining()).append(",").append(result.getPerDefTesting()).append(",").append(result.getClassifier().toString()).append(",").append(result.getBalancing()).append(",").append(result.getFeatureSelection()).append(",").append(result.getCostSensitiveType().toString()).append(",").append(result.getTp()).append(",").append(result.getFp()).append(",").append(result.getTn()).append(",").append(result.getFn()).append(",").append(result.getPrecision()).append(",").append(result.getRecall()).append(",").append(result.getAUC()).append(",").append(result.getKappa()).append("\n");
             }
         }
         FileWriter fileWriter = new FileWriter(fileName);

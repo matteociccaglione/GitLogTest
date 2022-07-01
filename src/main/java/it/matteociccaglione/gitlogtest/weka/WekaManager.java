@@ -3,6 +3,8 @@ package it.matteociccaglione.gitlogtest.weka;
 import it.matteociccaglione.gitlogtest.file.FileBuilder;
 import it.matteociccaglione.gitlogtest.jira.Version;
 import weka.classifiers.Classifier;
+import weka.classifiers.CostMatrix;
+import weka.classifiers.meta.CostSensitiveClassifier;
 import weka.classifiers.meta.FilteredClassifier;
 import weka.filters.Filter;
 import weka.filters.supervised.attribute.AttributeSelection;
@@ -55,21 +57,43 @@ public class WekaManager {
         return new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifiers);
     }
 
-    public static WekaResults sampling(String training, String testing, weka.classifiers.Classifier classifier, Classifiers classifiers, SamplingMethods samplingMethods) throws Exception {
+    public static WekaResults sampling(String training, String testing, weka.classifiers.Classifier classifier, Classifiers classifiers, SamplingMethods samplingMethods, CostSensitiveType costSensitiveType) throws Exception {
         ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(training);
         Instances iTraining = dataTraining.getDataSet();
         iTraining.setClassIndex(iTraining.numAttributes()-1);
         ConverterUtils.DataSource dataTesting = new ConverterUtils.DataSource(testing);
         Instances iTesting = dataTesting.getDataSet();
         iTesting.setClassIndex(iTesting.numAttributes()-1);
-        return sampling(iTraining,iTesting,classifier,classifiers,samplingMethods);
+        CostSensitiveClassifier cl = new CostSensitiveClassifier();
+        cl.setClassifier(classifier);
+        return sampling(iTraining,iTesting,cl,classifiers,samplingMethods,costSensitiveType);
     }
-    public static WekaResults sampling(Instances iTraining, Instances iTesting, weka.classifiers.Classifier classifier, Classifiers classifiers, SamplingMethods samplingMethods) throws Exception {
+    private static CostMatrix buildCostMatrix(double cfp, double cfn){
+        CostMatrix costMatrix = new CostMatrix(2);
+        costMatrix.setCell(0, 0, 0.0);
+        costMatrix.setCell(1, 0, cfp);
+        costMatrix.setCell(0, 1, cfn);
+        costMatrix.setCell(1, 1, 0.0);
+        return costMatrix;
+    }
+    public static WekaResults sampling(Instances iTraining, Instances iTesting, CostSensitiveClassifier classifier, Classifiers classifiers, SamplingMethods samplingMethods,CostSensitiveType costSensitiveType) throws Exception {
+        Classifier cl = classifier.getClassifier();
+        if(costSensitiveType==CostSensitiveType.SENSITIVE){
+            classifier.setCostMatrix(buildCostMatrix(10,0));
+            classifier.setMinimizeExpectedCost(false);
+        }
+        if(costSensitiveType==CostSensitiveType.THRESHOLD){
+            classifier.setCostMatrix(buildCostMatrix(10,0));
+            classifier.setMinimizeExpectedCost(true);
+        }
         Resample resample = new Resample();
         SpreadSubsample spreadSubsample = new SpreadSubsample();
         resample.setInputFormat(iTraining);
         FilteredClassifier fc = new FilteredClassifier();
-        fc.setClassifier(classifier);
+        if(costSensitiveType==CostSensitiveType.NONE)
+            fc.setClassifier(cl);
+        else
+            fc.setClassifier(classifier);
         if(samplingMethods == SamplingMethods.RESAMPLE){
             fc.setFilter(resample);
         }

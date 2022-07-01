@@ -58,6 +58,7 @@ public class Version {
             return;
         }
         for (Classes cl : classes){
+            /*
             boolean found = false;
             for (Classes pcl: this.classes){
                 if(pcl.getName()==cl.getName()){
@@ -69,7 +70,12 @@ public class Version {
                 this.classes.add(cl);
                 continue;
             }
+            */
             Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            if(prevCl==null){
+                this.classes.add(cl);
+                continue;
+            }
             prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
             prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
             prevCl.setChurn(prevCl.getChurn()+cl.getChurn());

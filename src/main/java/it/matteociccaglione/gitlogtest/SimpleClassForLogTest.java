@@ -4,14 +4,12 @@ import it.matteociccaglione.gitlogtest.jira.Classes;
 import it.matteociccaglione.gitlogtest.jira.Issue;
 import it.matteociccaglione.gitlogtest.jira.JiraManager;
 import it.matteociccaglione.gitlogtest.jira.Version;
-import it.matteociccaglione.gitlogtest.weka.Classifiers;
-import it.matteociccaglione.gitlogtest.weka.SamplingMethods;
-import it.matteociccaglione.gitlogtest.weka.WekaManager;
-import it.matteociccaglione.gitlogtest.weka.WekaResults;
+import it.matteociccaglione.gitlogtest.weka.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.revwalk.RevCommit;
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.lazy.IBk;
+import weka.classifiers.meta.CostSensitiveClassifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
 
@@ -42,13 +40,13 @@ public class SimpleClassForLogTest {
         */
         createCsvForWekaPrediction("ZOOKEEPER","/home/utente/zookeeper/.git");
         createCsvForWekaPrediction("BOOKKEEPER","/home/utente/bookkeeper/.git");
-        /*
+
         List<Version> versionToUseZ = buildProject("ZOOKEEPER","/home/utente/zookeeper/.git");
         List<Version> versionToUseB = buildProject("BOOKKEEPER","/home/utente/bookkeeper/.git");
         String filepathZ = "/home/utente/Scrivania/"+"ZOOKEEPER".toLowerCase()+".csv";
         String filepathB = "/home/utente/Scrivania/"+"BOOKKEEPER".toLowerCase()+".csv";
         walkForward(List.of(filepathZ,filepathB),List.of(versionToUseZ,versionToUseB),List.of("ZOOKEEPER","BOOKKEEPER"),List.of("/home/utente/zookeeper/.git","/home/utente/ISW2/bookkeeper/bookkeeper/.git"));
-        */
+
     }
     private  static void createCsvForWekaPrediction(String projectName, String projectPath) throws IOException, GitAPIException, ParseException {
         List<Version> versions = JiraManager.retrieveVersions(projectName);
@@ -385,16 +383,19 @@ public class SimpleClassForLogTest {
                     }
                 }
             }
-            List<WekaResults> nb = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, true);
-            List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, true);
-            List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, true);
-            List<WekaResults> nbNf = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, false);
-            List<WekaResults> ibkNf = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, false);
-            List<WekaResults> rfNf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, false);
-            FileBuilder.buildWekaCsv(List.of(nb,ibk,rf,nbNf,ibkNf,rfNf),"Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection, TP, FP, TN, FN,Precision,Recall,AUC,Kappa","ZOOKEEPER","/home/utente/Scrivania/"+projectName+"WekaResult.csv");
+            List<WekaResults> nb = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
+            List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
+            List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
+            List<WekaResults> nbT = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
+            List<WekaResults> ibkT = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
+            List<WekaResults> rfT = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
+            List<WekaResults> nbNf = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
+            List<WekaResults> ibkNf = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
+            List<WekaResults> rfNf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
+            FileBuilder.buildWekaCsv(List.of(nb,ibk,rf,nbT,ibkT,rfT,nbNf,ibkNf,rfNf),"Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection,Cost sensitive, TP, FP, TN, FN,Precision,Recall,AUC,Kappa",projectName,"/home/utente/Scrivania/"+projectName+"WekaResult.csv");
         }
         }
-    private static List<WekaResults> performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet, List<Version> totalData, boolean featureSelection) throws Exception {
+    private static List<WekaResults> performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet, List<Version> totalData, CostSensitiveType costSensitiveType) throws Exception {
         List<WekaResults> wr = new ArrayList<>();
 
         for (int i = 1; i<trainingSets.size(); i++){
@@ -411,22 +412,19 @@ public class SimpleClassForLogTest {
             String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
             String testingFile = WekaManager.toArff(List.of(testingSet.get(i)), "/home/utente/Scrivania/testing.csv");
             WekaResults wr1;
-            if(featureSelection) {
-                List<Instances> instances = WekaManager.featureSelection(trainingFile, true,testingFile);
-                Instances testingInstances = instances.get(1);
-                Instances trainingInstances = instances.get(0);
-                 wr1 = WekaManager.sampling(trainingInstances, testingInstances, cl, classifier, SamplingMethods.SPREADSUBSAMPLE);
-            }
-            else{
-                 wr1 = WekaManager.sampling(trainingFile, testingFile, cl, classifier, SamplingMethods.SPREADSUBSAMPLE);
-
-            }
+            List<Instances> instances = WekaManager.featureSelection(trainingFile, true,testingFile);
+            Instances testingInstances = instances.get(1);
+            Instances trainingInstances = instances.get(0);
+            CostSensitiveClassifier costSensitiveClassifier = new CostSensitiveClassifier();
+            costSensitiveClassifier.setClassifier(cl);
+            wr1 = WekaManager.sampling(trainingInstances, testingInstances, costSensitiveClassifier, classifier, SamplingMethods.SPREADSUBSAMPLE,costSensitiveType);
             //WekaResults wr1 = WekaManager.classifier(trainingFile,testingFile,cl,classifier);
             wr1.setnReleases(trainingSets.get(i).size());
             wr1.setPerTraining((float)trainingSets.get(i).size()/totalData.size());
             wr1.setPerDefTraining(Version.getPercentageDefective(trainingSets.get(i)));
             wr1.setPerDefTesting(Version.getPercentageDefective(List.of(testingSet.get(i))));
-            wr1.setFeatureSelection(featureSelection);
+            wr1.setFeatureSelection(true);
+            wr1.setCostSensitiveType(costSensitiveType);
             wr1.setBalancing("undersampling");
             wr.add(wr1);
         }

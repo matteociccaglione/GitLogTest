@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Classes {
+    private List<String> names= new ArrayList<>();
     private String name;
     private Version version;
     private Boolean buggy;
@@ -50,7 +51,7 @@ public class Classes {
     }
 
     public void setName(String name) {
-        this.name = name;
+        this.names.add(name);
     }
 
     public Classes(String name){
@@ -67,6 +68,10 @@ public class Classes {
         this.maxLocAdded = 0L;
         this.churn = 0;
         this.buggy = false;
+        this.names.add(name);
+    }
+    public List<String> getNames(){
+        return this.names;
     }
     public Version getVersion() {
         return version;
@@ -173,7 +178,7 @@ public class Classes {
     }
     public static Classes getClassByName(String name, List<Classes> classes){
         for (Classes cl : classes){
-            if(cl.getName().equalsIgnoreCase(name)){
+            if(cl.getNames().contains(name)){
                 return cl;
             }
         }

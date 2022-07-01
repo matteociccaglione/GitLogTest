@@ -125,6 +125,10 @@ public class GitLogMiningClass {
         df.setDiffComparator(RawTextComparator.DEFAULT);
         df.setDetectRenames(true);
         for (DiffEntry diff : differences){
+            if(diff.getChangeType() == DiffEntry.ChangeType.COPY){
+                //ignore  copies
+                continue;
+            }
             String fileName = diff.getOldPath();
             if(fileName.equalsIgnoreCase("/dev/null")){
                 //This is a new file
@@ -138,8 +142,14 @@ public class GitLogMiningClass {
                 //ignore file in test directories
                 continue;
             }
-            Classes cl = new Classes(fileName);
-            classes.add(cl);
+            Classes cl = Classes.getClassByName(fileName,classes);
+            if(cl==null){
+                cl=new Classes(fileName);
+                classes.add(cl);
+            }
+            else{
+                cl.setName(diff.getNewPath());
+            }
             Integer linesDeleted = 0;
             Integer linesAdded = 0;
             for (Edit edit : df.toFileHeader(diff).toEditList()) {
