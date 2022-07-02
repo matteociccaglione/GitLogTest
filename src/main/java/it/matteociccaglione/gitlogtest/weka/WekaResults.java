@@ -114,8 +114,8 @@ public class WekaResults {
         this.nReleases = nReleases;
     }
 
-    public WekaResults(Double AUC, Double recall, Double precision, Double kappa, Classifiers classifier) {
-        this.auc = AUC;
+    public WekaResults(Double auc, Double recall, Double precision, Double kappa, Classifiers classifier) {
+        this.auc = auc;
         this.recall = recall;
         this.precision = precision;
         this.kappa = kappa;

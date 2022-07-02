@@ -276,15 +276,15 @@ public class SimpleClassForLogTest {
             }
             computeCommitNoBugWF(gitLog,versionToUse,trainingSets);
 
-            List<WekaResults> nb = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
-            List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
-            List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
-            List<WekaResults> nbT = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
-            List<WekaResults> ibkT = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
-            List<WekaResults> rfT = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
-            List<WekaResults> nbNf = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
-            List<WekaResults> ibkNf = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
-            List<WekaResults> rfNf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
+            List<WekaResults> nb = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
+            List<WekaResults> ibk = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
+            List<WekaResults> rf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
+            List<WekaResults> nbT = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
+            List<WekaResults> ibkT = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
+            List<WekaResults> rfT = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
+            List<WekaResults> nbNf = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
+            List<WekaResults> ibkNf = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
+            List<WekaResults> rfNf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
             FileBuilder.buildWekaCsv(List.of(nb,ibk,rf,nbT,ibkT,rfT,nbNf,ibkNf,rfNf),"Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection,Cost sensitive, TP, FP, TN, FN,Precision,Recall,AUC,Kappa",projectName,"/home/utente/Scrivania/"+projectName+"WekaResult.csv");
         }
         }
@@ -293,13 +293,13 @@ public class SimpleClassForLogTest {
 
         for (int i = 1; i<trainingSets.size(); i++){
             weka.classifiers.Classifier cl = new NaiveBayes();
-            if(classifier==Classifiers.Ibk){
+            if(classifier==Classifiers.IBK){
                 cl = new IBk();
             }
-            if(classifier==Classifiers.NaiveBayes){
+            if(classifier==Classifiers.NAIVE_BAYES){
                 cl = new NaiveBayes();
             }
-            if(classifier == Classifiers.RandomForest){
+            if(classifier == Classifiers.RANDOM_FOREST){
                 cl = new RandomForest();
             }
             String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");

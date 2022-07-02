@@ -1,7 +1,7 @@
 package it.matteociccaglione.gitlogtest.weka;
 
 public enum Classifiers {
-    RandomForest,
-    NaiveBayes,
-    Ibk
+    RANDOM_FOREST,
+    NAIVE_BAYES,
+    IBK
 }
