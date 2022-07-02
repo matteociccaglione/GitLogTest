@@ -1,4 +1,5 @@
 package it.matteociccaglione.gitlogtest;
+import it.matteociccaglione.gitlogtest.file.Configuration;
 import it.matteociccaglione.gitlogtest.file.FileBuilder;
 import it.matteociccaglione.gitlogtest.jira.Classes;
 import it.matteociccaglione.gitlogtest.jira.Issue;
@@ -6,15 +7,15 @@ import it.matteociccaglione.gitlogtest.jira.JiraManager;
 import it.matteociccaglione.gitlogtest.jira.Version;
 import it.matteociccaglione.gitlogtest.weka.*;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.revwalk.RevCommit;
+
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.lazy.IBk;
 import weka.classifiers.meta.CostSensitiveClassifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
 
+
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -22,98 +23,105 @@ import java.time.Instant;
 import java.util.*;
 
 public class SimpleClassForLogTest {
+    public static final String ZOOKEEPER="ZOOKEEPER";
+    public static final String BOOK="BOOKKEEPER";
+    public static final String BOOK_PATH = "/home/utente/bookkeeper/.git";
+    public static final String ZOO_PATH = "/home/utente/zookeeper/.git";
+    public static Configuration conf;
     public static void main(String[] args) throws Exception {
-        /*
-        System.out.println("This is the first commit");
-        System.out.println("Added new print");
-        System.out.println("Test");
-        */
-        /*
-        try {
-            List<String> commits = GitLogMiningClass.getCommits("added");
-            for (String com : commits) {
-                System.out.println(com);
+        File configFile = new File("config.csv");
+         conf = FileBuilder.readConfiguration(configFile);
+        createCsvForWekaPrediction(conf.getProjectName1(),conf.getProjectPath1());
+        createCsvForWekaPrediction(conf.getProjectName2(),conf.getProjectPath2());
+
+        List<Version> versionToUseZ = buildProject(conf.getProjectName1(), conf.getProjectPath1());
+        List<Version> versionToUseB = buildProject(conf.getProjectName2(),conf.getProjectPath2());
+        String filepathZ = conf.getProjectOutputDirectory()+conf.getProjectName1().toLowerCase()+".csv";
+        String filepathB = conf.getProjectOutputDirectory()+conf.getProjectName2().toLowerCase()+".csv";
+        walkForward(List.of(filepathZ,filepathB),List.of(versionToUseZ,versionToUseB),List.of(conf.getProjectName1(),conf.getProjectName2()),List.of(conf.getProjectPath1(),conf.getProjectPath2()));
+
+    }
+    private static void computeBugWithAV(Issue bug,List<Version> versionToUse, List<Issue> bugs, GitLogMiningClass gitLog) throws GitAPIException, IOException {
+        List<Version> affectedVersion = new ArrayList<>();
+        if(bug.getVersion()!=null){
+            List<Version> av = bug.getVersion();
+            int i = 0;
+            for(Version a: av) {
+                for (Version ver : versionToUse) {
+                    if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
+                        affectedVersion.add(ver);
+                        ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
+                    }
+                }
             }
-        }catch(Exception e){
-            e.printStackTrace();
+            bugs.remove(bug);
         }
-        */
-        createCsvForWekaPrediction("ZOOKEEPER","/home/utente/zookeeper/.git");
-        createCsvForWekaPrediction("BOOKKEEPER","/home/utente/bookkeeper/.git");
+        if(affectedVersion.isEmpty()){
+            return;
+        }
+        List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
+        //For each commit I need to see what classes was modified
+        for (GitLogMiningClass.Commit commit: commits){
 
-        List<Version> versionToUseZ = buildProject("ZOOKEEPER","/home/utente/zookeeper/.git");
-        List<Version> versionToUseB = buildProject("BOOKKEEPER","/home/utente/bookkeeper/.git");
-        String filepathZ = "/home/utente/Scrivania/"+"ZOOKEEPER".toLowerCase()+".csv";
-        String filepathB = "/home/utente/Scrivania/"+"BOOKKEEPER".toLowerCase()+".csv";
-        walkForward(List.of(filepathZ,filepathB),List.of(versionToUseZ,versionToUseB),List.of("ZOOKEEPER","BOOKKEEPER"),List.of("/home/utente/zookeeper/.git","/home/utente/ISW2/bookkeeper/bookkeeper/.git"));
-
+            List<Classes> classes = gitLog.getFileModified(commit);
+            if(classes.isEmpty()){
+                continue;
+            }
+            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+            Version version = Version.getVersionByDate(affectedVersion,commitDate);
+            assert version != null;
+            version.setClasses(classes,true);
+            for (Version v : affectedVersion){
+                v.setBuggyClasses(classes);
+            }
+        }
+    }
+    private static void computeAvg(List<Version> versionToUse){
+        for (Version version: versionToUse){
+            List<Classes> cls = version.getClasses();
+            if(cls==null){
+                continue;
+            }
+            for (Classes cl: cls){
+                cl.setAvgChurn((float) ((double)cl.getChurn()/cl.getNr()));
+                cl.setAvgLocAdded((float) ((double)cl.getLocAdded()/cl.getNr()));
+            }
+        }
+    }
+    private static void computeCommitWithoutBugs(List<GitLogMiningClass.Commit> commits, GitLogMiningClass gitLog, List<Version> versionToUse) throws GitAPIException, IOException {
+        for (GitLogMiningClass.Commit commit: commits){
+            List<Classes> classes = gitLog.getFileModified(commit);
+            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+            Version version = Version.getVersionByDate(versionToUse,commitDate);
+            if(version == null){
+                continue;
+            }
+            version.setClasses(classes,false);
+        }
     }
     private  static void createCsvForWekaPrediction(String projectName, String projectPath) throws IOException, GitAPIException, ParseException {
         List<Version> versions = JiraManager.retrieveVersions(projectName);
-        int numberOfVersions = versions.size();
-        int numberOfVersionToUse = numberOfVersions;
+        int numberOfVersionToUse = versions.size();
         versions.sort(new Version.VersionComparator());
         List<Version> versionToUse = versions.subList(0,numberOfVersionToUse);
-        for(Version version: versionToUse){
-            System.out.println(version.toString());
-        }
         List<Issue> bugs = JiraManager.retrieveIssues(projectName);
         bugs.sort(new Issue.IssueComparator());
         GitLogMiningClass gitLog = GitLogMiningClass.getInstance(projectPath);
         //Now for each bug search commit with this bug id
         List<Issue> copyBugs = List.copyOf(bugs);
         for (Issue bug: copyBugs){
-
-            List<Version> affectedVersion = new ArrayList<>();
-            if(bug.getVersion()!=null){
-                List<Version> av = bug.getVersion();
-                int i = 0;
-                for(Version a: av) {
-                    for (Version ver : versionToUse) {
-                        if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
-                            affectedVersion.add(ver);
-                            ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
-                        }
-                    }
-                }
-                bugs.remove(bug);
-            }
-
-            else{
-                continue;
-            }
-            if(affectedVersion.isEmpty()){
-                continue;
-            }
-            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-            //For each commit I need to see what classes was modified
-            for (GitLogMiningClass.Commit commit: commits){
-
-                List<Classes> classes = gitLog.getFileModified(commit);
-                if(classes.size() == 0){
-                    continue;
-                }
-                Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-                Version version = Version.getVersionByDate(affectedVersion,commitDate);
-                assert version != null;
-                version.setClasses(classes,true);
-                List<Classes> cls = version.getClasses();
-                for (Version v : affectedVersion){
-                    v.setBuggyClasses(classes);
-                }
-            }
+            computeBugWithAV(bug,versionToUse,bugs,gitLog);
         }
-        System.out.println("Start with av computation");
         for (Issue bug: bugs){
             List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
             List<Version> affectedVersion = proportion(versionToUse,bug,commits.get(0));
-            if(affectedVersion==null){
+            if(affectedVersion.isEmpty()){
                 continue;
             }
             Date commitDate;
             for (GitLogMiningClass.Commit commit: commits){
                 List<Classes> classes = gitLog.getFileModified(commit);
-                if(classes.size() == 0){
+                if(classes.isEmpty()){
                     continue;
                 }
                 commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
@@ -126,37 +134,17 @@ public class SimpleClassForLogTest {
             }
         }
         List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
-        for (GitLogMiningClass.Commit commit: commits){
-            List<Classes> classes = gitLog.getFileModified(commit);
-            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-            Version version = Version.getVersionByDate(versionToUse,commitDate);
-            if(version == null){
-                continue;
-            }
-            version.setClasses(classes,false);
-        }
-        for (Version version: versionToUse){
-            List<Classes> cls = version.getClasses();
-            if(cls==null){
-                continue;
-            }
-            for (Classes cl: cls){
-                cl.setAvgChurn((float) (cl.getChurn()/cl.getNr()));
-                cl.setAvgLocAdded((float) (cl.getLocAdded()/cl.getNr()));
-            }
-        }
-        List<Version> copyVersions = new ArrayList<>();
-        for (Version ver: versionToUse){
-            copyVersions.add(ver);
-        }
+        computeCommitWithoutBugs(commits,gitLog,versionToUse);
+        computeAvg(versionToUse);
+        List<Version> copyVersions = new ArrayList<>(versionToUse);
         for (Version ver: copyVersions){
             if(ver.getClasses()==null){
                 versionToUse.remove(ver);
             }
         }
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
-        FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/"+projectName.toLowerCase()+".csv",versionToUse,header);
-        fb.toFlat("/home/utente/Scrivania/"+projectName.toLowerCase()+".arff");
+        FileBuilder fb = FileBuilder.build(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".csv",versionToUse,header);
+        fb.toFlat(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".arff");
     }
     private static List<Version> buildProject(String projectName, String projectPath) throws Exception {
         List<Version> versions = JiraManager.retrieveVersions(projectName);
@@ -164,66 +152,25 @@ public class SimpleClassForLogTest {
         int numberOfVersionToUse = numberOfVersions * 50 / 100;
         versions.sort(new Version.VersionComparator());
         List<Version> versionToUse = versions.subList(0,numberOfVersionToUse);
-        for(Version version: versionToUse){
-            System.out.println(version.toString());
-        }
+
         List<Issue> bugs = JiraManager.retrieveIssues(projectName);
         bugs.sort(new Issue.IssueComparator());
         GitLogMiningClass gitLog = GitLogMiningClass.getInstance(projectPath);
         //Now for each bug search commit with this bug id
         List<Issue> copyBugs = List.copyOf(bugs);
         for (Issue bug: copyBugs){
-
-            List<Version> affectedVersion = new ArrayList<>();
-            if(bug.getVersion()!=null){
-                List<Version> av = bug.getVersion();
-                int i = 0;
-                for(Version a: av) {
-                    for (Version ver : versionToUse) {
-                        if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
-                            affectedVersion.add(ver);
-                            ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
-                        }
-                    }
-                }
-                bugs.remove(bug);
-            }
-
-            else{
-                continue;
-            }
-            if(affectedVersion.isEmpty()){
-                continue;
-            }
-            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-            //For each commit I need to see what classes was modified
-            for (GitLogMiningClass.Commit commit: commits){
-
-                List<Classes> classes = gitLog.getFileModified(commit);
-                if(classes.size() == 0){
-                    continue;
-                }
-                Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-                Version version = Version.getVersionByDate(affectedVersion,commitDate);
-                assert version != null;
-                version.setClasses(classes,true);
-                List<Classes> cls = version.getClasses();
-                for (Version v : affectedVersion){
-                    v.setBuggyClasses(classes);
-                }
-            }
+            computeBugWithAV(bug,versionToUse,bugs,gitLog);
         }
-        System.out.println("Start with av computation");
         for (Issue bug: bugs){
             List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
             List<Version> affectedVersion = proportion(versionToUse,bug,commits.get(0));
-            if(affectedVersion==null){
+            if(affectedVersion.isEmpty()){
                 continue;
             }
             Date commitDate;
             for (GitLogMiningClass.Commit commit: commits){
                 List<Classes> classes = gitLog.getFileModified(commit);
-                if(classes.size() == 0){
+                if(classes.isEmpty()){
                     continue;
                 }
                 commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
@@ -236,37 +183,17 @@ public class SimpleClassForLogTest {
             }
         }
         List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
-        for (GitLogMiningClass.Commit commit: commits){
-            List<Classes> classes = gitLog.getFileModified(commit);
-            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-            Version version = Version.getVersionByDate(versionToUse,commitDate);
-            if(version == null){
-                continue;
-            }
-            version.setClasses(classes,false);
-        }
-        for (Version version: versionToUse){
-            List<Classes> cls = version.getClasses();
-            if(cls==null){
-                continue;
-            }
-            for (Classes cl: cls){
-                cl.setAvgChurn((float) (cl.getChurn()/cl.getNr()));
-                cl.setAvgLocAdded((float) (cl.getLocAdded()/cl.getNr()));
-            }
-        }
-        List<Version> copyVersions = new ArrayList<>();
-        for (Version ver: versionToUse){
-            copyVersions.add(ver);
-        }
+        computeCommitWithoutBugs(commits,gitLog,versionToUse);
+        computeAvg(versionToUse);
+        List<Version> copyVersions = new ArrayList<>(versionToUse);
         for (Version ver: copyVersions){
             if(ver.getClasses()==null){
                 versionToUse.remove(ver);
             }
         }
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
-        FileBuilder fb = FileBuilder.build("/home/utente/Scrivania/"+projectName.toLowerCase()+".csv",versionToUse,header);
-        fb.toFlat("/home/utente/Scrivania/"+projectName.toLowerCase()+".arff");
+        FileBuilder fb = FileBuilder.build(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".csv",versionToUse,header);
+        fb.toFlat(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".arff");
 
         return versionToUse;
     }
@@ -274,7 +201,7 @@ public class SimpleClassForLogTest {
         Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
         Version fixedVersion = Version.getVersionByDate(versionToUse,commitDate);
         if(fixedVersion==null){
-            return null;
+            return Collections.emptyList();
         }
         List<Version> affectedVersion = new ArrayList<>();
         Integer numberOfFix = 0;
@@ -286,103 +213,107 @@ public class SimpleClassForLogTest {
             numberOfFix+=ver.getNumberOfBugFixed();
             numberOfVer++;
         }
-
+        if(numberOfVer==0)
+            numberOfVer=1;
         float proportion = numberOfFix/ (float) numberOfVer;
         Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getCreatedDate().substring(0,11));
         Version openingVersion = Version.getVersionByDate(versionToUse,bugDate);
         int ivEpoch = Math.round(Version.toEpochVersion(versionToUse,fixedVersion) - (Version.toEpochVersion(versionToUse,fixedVersion)-Version.toEpochVersion(versionToUse,openingVersion))*proportion);
-        Version injectedVersion = versionToUse.get(ivEpoch);
         for (int i = ivEpoch; i < Version.toEpochVersion(versionToUse,fixedVersion); i++){
             affectedVersion.add(versionToUse.get(i));
         }
         return affectedVersion;
+    }
+
+    private static void computeCommitWF(Issue bug, List<Version> versionToUse, Map<String,List<Version>> map, GitLogMiningClass gitLog) throws GitAPIException, IOException, ParseException {
+        Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
+        Version version = Version.getVersionByDate(versionToUse, bugDate);
+        List<Version> trainingSet = null;
+        if (map.containsKey(version.getVersionNumber())) {
+            trainingSet = map.get(version.getVersionNumber());
+        }
+        if (trainingSet == null) {
+            return;
+        }
+        List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
+        List<Version> affectedVersion = new ArrayList<>();
+        if (bug.getVersion() != null) {
+            List<Version> av = bug.getVersion();
+            for (Version a : av) {
+                for (Version ver : trainingSet) {
+                    if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
+                        affectedVersion.add(ver);
+                        ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
+                    }
+                }
+            }
+        } else {
+            affectedVersion = proportion(trainingSet, bug, commits.get(0));
+        }
+        if (affectedVersion.isEmpty()) {
+            return;
+        }
+        for (GitLogMiningClass.Commit commit : commits) {
+
+            List<Classes> classes = gitLog.getFileModified(commit);
+            if (classes.isEmpty()) {
+                continue;
+            }
+            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+            version = Version.getVersionByDate(affectedVersion, commitDate);
+            assert version != null;
+            version.setClasses(classes, true);
+            for (Version v : affectedVersion) {
+                v.setBuggyClasses(classes);
+            }
+        }
+    }
+    private static void computeCommitNoBugWF(GitLogMiningClass gitLog, List<Version> versionToUse,List<List<Version>> trainingSets) throws GitAPIException, IOException {
+        List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
+        for (GitLogMiningClass.Commit commit : commits) {
+            List<Classes> classes = gitLog.getFileModified(commit);
+            if (classes.isEmpty()) {
+                continue;
+            }
+            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+            Version version = Version.getVersionByDate(versionToUse, commitDate);
+            for (List<Version> trainingSet : trainingSets) {
+                for (Version value : trainingSet) {
+                    if (version.getVersionNumber().equalsIgnoreCase(value.getVersionNumber())) {
+                        value.setClasses(classes);
+                    }
+                }
+            }
+        }
     }
     private static void walkForward(List<String> files, List<List<Version>> versions,List<String> projectNames, List<String> projectPaths) throws Exception {
 
 
         for (int c = 0; c < files.size(); c++) {
             List<Version> versionToUse = versions.get(c);
-            String file = files.get(c);
             String projectName = projectNames.get(c);
             String projectPath = projectPaths.get(c);
             List<List<Version>> trainingSets = new ArrayList<>();
             Map<String,List<Version>> map = new HashMap<>();
-            List<Version> trainingVersion = new ArrayList<>();
-            List<Version> testingVersion = new ArrayList<>();
             List<Version> testingSets = new ArrayList<>();
             List<Issue> bugs = JiraManager.retrieveIssues(projectName);
             bugs.sort(new Issue.IssueComparator());
 
             for (int i = 0; i < versionToUse.size(); i++) {
                 List<Version> trainingSet = new ArrayList<>();
-                int testingStart = i;
-                for (int j = 0; j < testingStart; j++) {
+                for (int j = 0; j < i; j++) {
                     trainingSet.add(versionToUse.get(j).getCopyWithoutCommits());
                 }
                 trainingSets.add(trainingSet);
-                testingSets.add(versionToUse.get(testingStart));
-                map.put(versionToUse.get(testingStart).getVersionNumber(), trainingSet);
+                testingSets.add(versionToUse.get(i));
+                map.put(versionToUse.get(i).getVersionNumber(), trainingSet);
             }
             GitLogMiningClass gitLog = GitLogMiningClass.getInstance(projectPath);
             for (Issue bug : bugs) {
-                Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
-                Version version = Version.getVersionByDate(versionToUse, bugDate);
-                List<Version> trainingSet = null;
-                if (map.containsKey(version.getVersionNumber())) {
-                    trainingSet = map.get(version.getVersionNumber());
-                }
-                if (trainingSet == null) {
-                    continue;
-                }
-                List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-                List<Version> affectedVersion = new ArrayList<>();
-                if (bug.getVersion() != null) {
-                    List<Version> av = bug.getVersion();
-                    for (Version a : av) {
-                        for (Version ver : trainingSet) {
-                            if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
-                                affectedVersion.add(ver);
-                                ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
-                            }
-                        }
-                    }
-                } else {
-                    affectedVersion = proportion(trainingSet, bug, commits.get(0));
-                }
-                if (affectedVersion.isEmpty()) {
-                    continue;
-                }
-                for (GitLogMiningClass.Commit commit : commits) {
+                computeCommitWF(bug,versionToUse,map,gitLog);
+            }
+            computeCommitNoBugWF(gitLog,versionToUse,trainingSets);
 
-                    List<Classes> classes = gitLog.getFileModified(commit);
-                    if (classes.size() == 0) {
-                        continue;
-                    }
-                    Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-                    version = Version.getVersionByDate(affectedVersion, commitDate);
-                    assert version != null;
-                    version.setClasses(classes, true);
-                    for (Version v : affectedVersion) {
-                        v.setBuggyClasses(classes);
-                    }
-                }
-            }
-            List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
-            for (GitLogMiningClass.Commit commit : commits) {
-                List<Classes> classes = gitLog.getFileModified(commit);
-                if (classes.size() == 0) {
-                    continue;
-                }
-                Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-                Version version = Version.getVersionByDate(versionToUse, commitDate);
-                for (int i = 0; i < trainingSets.size(); i++) {
-                    for (int j = 0; j < trainingSets.get(i).size(); j++) {
-                        if (version.getVersionNumber().equalsIgnoreCase(trainingSets.get(i).get(j).getVersionNumber())) {
-                            trainingSets.get(i).get(j).setClasses(classes);
-                        }
-                    }
-                }
-            }
             List<WekaResults> nb = performWeka(Classifiers.NaiveBayes, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
             List<WekaResults> ibk = performWeka(Classifiers.Ibk, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
             List<WekaResults> rf = performWeka(Classifiers.RandomForest, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
@@ -410,15 +341,13 @@ public class SimpleClassForLogTest {
                 cl = new RandomForest();
             }
             String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
-            String testingFile = WekaManager.toArff(List.of(testingSet.get(i)), "/home/utente/Scrivania/testing.csv");
             WekaResults wr1;
-            List<Instances> instances = WekaManager.featureSelection(trainingFile, true,testingFile);
+            List<Instances> instances = WekaManager.featureSelection(trainingFile, true);
             Instances testingInstances = instances.get(1);
             Instances trainingInstances = instances.get(0);
             CostSensitiveClassifier costSensitiveClassifier = new CostSensitiveClassifier();
             costSensitiveClassifier.setClassifier(cl);
             wr1 = WekaManager.sampling(trainingInstances, testingInstances, costSensitiveClassifier, classifier, SamplingMethods.SPREADSUBSAMPLE,costSensitiveType);
-            //WekaResults wr1 = WekaManager.classifier(trainingFile,testingFile,cl,classifier);
             wr1.setnReleases(trainingSets.get(i).size());
             wr1.setPerTraining((float)trainingSets.get(i).size()/totalData.size());
             wr1.setPerDefTraining(Version.getPercentageDefective(trainingSets.get(i)));
@@ -429,8 +358,5 @@ public class SimpleClassForLogTest {
             wr.add(wr1);
         }
         return wr;
-    }
-    private static void computeIssues(List<Version> versionToUse, List<Issue> bugs){
-
     }
 }

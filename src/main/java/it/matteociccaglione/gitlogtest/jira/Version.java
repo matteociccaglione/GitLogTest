@@ -28,29 +28,31 @@ public class Version {
             return;
         }
         for (Classes cl : classes){
-            if(!this.classes.contains(cl)){
+            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            if(prevCl==null){
                 this.classes.add(cl);
                 continue;
             }
-            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
-            prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
-            prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
-            prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
-            if(prevCl.getMaxChurn()<cl.getChurn()){
-                prevCl.setMaxChurn(cl.getChurn());
-            }
-            if(prevCl.getMaxLocAdded()<(long)cl.getLocAdded()){
-                prevCl.setMaxLocAdded((long)cl.getLocAdded());
-            }
-            prevCl.setNr(prevCl.getNr()+cl.getNr());
-            prevCl.setAuthors(cl.getAuthors());
-            prevCl.setnFix(prevCl.getnFix()+cl.getnFix());
+
+                prevCl.setLocTouched(prevCl.getLocTouched() + cl.getLocTouched());
+                prevCl.setLocAdded(prevCl.getLocAdded() + cl.getLocAdded());
+                prevCl.setChurn(prevCl.getChurn() + cl.getChurn());
+                if (prevCl.getMaxChurn() < cl.getChurn()) {
+                    prevCl.setMaxChurn(cl.getChurn());
+                }
+                if (prevCl.getMaxLocAdded() < (long) cl.getLocAdded()) {
+                    prevCl.setMaxLocAdded((long) cl.getLocAdded());
+                }
+                prevCl.setNr(prevCl.getNr() + cl.getNr());
+                prevCl.setAuthors(cl.getAuthors());
+                prevCl.setnFix(prevCl.getnFix() + cl.getnFix());
+
         }
     }
     public void setClasses(List<Classes> classes,Boolean buggy) {
         if(this.classes == null){
             this.classes = classes;
-            if(buggy){
+            if(Boolean.TRUE.equals(buggy)){
                 for (Classes cl: this.classes){
                     cl.setBuggy(true);
                 }
@@ -58,19 +60,6 @@ public class Version {
             return;
         }
         for (Classes cl : classes){
-            /*
-            boolean found = false;
-            for (Classes pcl: this.classes){
-                if(pcl.getName()==cl.getName()){
-                    found = true;
-                    break;
-                }
-            }
-            if(!found){
-                this.classes.add(cl);
-                continue;
-            }
-            */
             Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
             if(prevCl==null){
                 this.classes.add(cl);
@@ -87,7 +76,7 @@ public class Version {
             }
             prevCl.setNr(prevCl.getNr()+cl.getNr());
             prevCl.setAuthors(cl.getAuthors());
-            if(buggy){
+            if(Boolean.TRUE.equals(buggy)){
                 prevCl.setnFix(prevCl.getnFix()+cl.getnFix());
             }
             prevCl.setBuggy(buggy);
@@ -141,42 +130,7 @@ public class Version {
 
         @Override
         public int compare(Version version, Version t1) {
-            /*
-            String[] versionNumbersArray1 =version.versionNumber.split("\\.");
-            String[] versionNumbersArray2 = t1.versionNumber.split("\\.");
-            ArrayList<String> versionNumbers1 = new ArrayList<String>(List.of(versionNumbersArray1));
-            ArrayList<String> versionNumbers2 = new ArrayList<String>(List.of(versionNumbersArray2));
-            if(versionNumbers1.size()==2){
-                versionNumbers1.add("0");
-            }
-            if(versionNumbers2.size()==2){
-                versionNumbers2.add("0");
-            }
-            if(Integer.parseInt(versionNumbers1.get(0))>Integer.parseInt(versionNumbers2.get(0))){
-                return 1;
-            }
-            if(Integer.parseInt(versionNumbers1.get(0))<Integer.parseInt(versionNumbers2.get(0))){
-                return -1;
-            }
-            if(Integer.parseInt(versionNumbers1.get(1))>Integer.parseInt(versionNumbers2.get(1))){
-                return 1;
-            }
-            if(Integer.parseInt(versionNumbers1.get(1))<Integer.parseInt(versionNumbers2.get(1))){
-                return -1;
-            }
-            if(Integer.parseInt(versionNumbers1.get(2))>Integer.parseInt(versionNumbers2.get(2))){
-                return 1;
-            }
-            if(Integer.parseInt(versionNumbers1.get(2))<Integer.parseInt(versionNumbers2.get(2))){
-                return -1;
-            }
-            return 0;*/
             return version.getVersionDate().compareTo(t1.getVersionDate());
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            return false;
         }
     }
     public static Version getVersionByDate(List<Version> versions, Date date){
@@ -193,8 +147,6 @@ public class Version {
             }
         }
         if(finalVersion==null){
-            for (Version ver: versions){
-            }
             return versions.get(versions.size()-1);
         }
         return finalVersion;
@@ -214,6 +166,10 @@ public class Version {
                 continue;
             }
             Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            if(prevCl==null){
+                this.classes.add(cl);
+                prevCl=cl;
+            }
             prevCl.setBuggy(true);
         }
     }
@@ -225,12 +181,14 @@ public class Version {
                 continue;
             }
             for (Classes cls : ver.classes) {
-                if (cls.getBuggy()) {
+                if (Boolean.TRUE.equals(cls.getBuggy())) {
                     nDefective++;
                 }
                 nTotal++;
             }
         }
+        if(nTotal==0)
+            nTotal=1;
         return nDefective/nTotal;
     }
     public static Integer toEpochVersion(List<Version> versions, Version version){

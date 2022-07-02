@@ -11,22 +11,19 @@ import weka.filters.supervised.attribute.AttributeSelection;
 import weka.attributeSelection.CfsSubsetEval;
 import weka.attributeSelection.GreedyStepwise;
 import weka.classifiers.Evaluation;
-import weka.classifiers.bayes.NaiveBayes;
-import weka.classifiers.lazy.IBk;
-import weka.classifiers.trees.RandomForest;
-import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.converters.ConverterUtils;
 import weka.filters.supervised.instance.Resample;
 import weka.filters.supervised.instance.SpreadSubsample;
-import weka.gui.beans.DataSource;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import static it.matteociccaglione.gitlogtest.weka.SamplingMethods.SMOTE;
 
 public class WekaManager {
+    private WekaManager(){
+
+    }
     public static String toArff(List<Version> versions, String filename) throws IOException {
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
         FileBuilder fb = FileBuilder.build(filename,versions,header);
@@ -47,13 +44,12 @@ public class WekaManager {
 
     }
     public static WekaResults classifier(Instances iTraining, Instances iTesting, weka.classifiers.Classifier classifier, Classifiers classifiers) throws Exception {
-        weka.classifiers.Classifier cl = classifier;
         iTraining.setClassIndex(iTraining.numAttributes()-1);
-        cl.buildClassifier(iTraining);
+        classifier.buildClassifier(iTraining);
 
         iTesting.setClassIndex(iTesting.numAttributes()-1);
         Evaluation eval = new Evaluation(iTesting);
-        eval.evaluateModel(cl,iTesting);
+        eval.evaluateModel(classifier,iTesting);
         return new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifiers);
     }
 
@@ -68,22 +64,22 @@ public class WekaManager {
         cl.setClassifier(classifier);
         return sampling(iTraining,iTesting,cl,classifiers,samplingMethods,costSensitiveType);
     }
-    private static CostMatrix buildCostMatrix(double cfp, double cfn){
+    private static CostMatrix buildCostMatrix(){
         CostMatrix costMatrix = new CostMatrix(2);
         costMatrix.setCell(0, 0, 0.0);
-        costMatrix.setCell(1, 0, cfp);
-        costMatrix.setCell(0, 1, cfn);
+        costMatrix.setCell(1, 0, (double) 10);
+        costMatrix.setCell(0, 1, (double) 0);
         costMatrix.setCell(1, 1, 0.0);
         return costMatrix;
     }
     public static WekaResults sampling(Instances iTraining, Instances iTesting, CostSensitiveClassifier classifier, Classifiers classifiers, SamplingMethods samplingMethods,CostSensitiveType costSensitiveType) throws Exception {
         Classifier cl = classifier.getClassifier();
         if(costSensitiveType==CostSensitiveType.SENSITIVE){
-            classifier.setCostMatrix(buildCostMatrix(10,0));
+            classifier.setCostMatrix(buildCostMatrix());
             classifier.setMinimizeExpectedCost(false);
         }
         if(costSensitiveType==CostSensitiveType.THRESHOLD){
-            classifier.setCostMatrix(buildCostMatrix(10,0));
+            classifier.setCostMatrix(buildCostMatrix());
             classifier.setMinimizeExpectedCost(true);
         }
         Resample resample = new Resample();
@@ -113,7 +109,7 @@ public class WekaManager {
         return wr;
     }
 
-    public static List<Instances> featureSelection(String dataSource, boolean backward, String testingSet) throws Exception {
+    public static List<Instances> featureSelection(String dataSource, boolean backward) throws Exception {
         ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(dataSource);
         Instances iTraining = dataTraining.getDataSet();
         iTraining.setClassIndex(iTraining.numAttributes()-1);

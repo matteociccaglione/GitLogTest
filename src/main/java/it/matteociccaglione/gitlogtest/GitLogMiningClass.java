@@ -2,16 +2,11 @@ package it.matteociccaglione.gitlogtest;
 import it.matteociccaglione.gitlogtest.jira.Classes;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
-import org.eclipse.jgit.blame.BlameResult;
 import org.eclipse.jgit.diff.*;
-import org.eclipse.jgit.errors.IncorrectObjectTypeException;
-import org.eclipse.jgit.errors.MissingObjectException;
 import org.eclipse.jgit.lib.ObjectReader;
-import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.RepositoryBuilder;
 import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 import org.eclipse.jgit.util.io.DisabledOutputStream;
@@ -22,18 +17,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 public class GitLogMiningClass {
-    private ArrayList<RevCommit> commits = new ArrayList<>();
-    private String repositoryPath;
+    private final ArrayList<RevCommit> commits = new ArrayList<>();
+    private final String repositoryPath;
     private GitLogMiningClass(String repositoryPath) throws GitAPIException, IOException {
         this.repositoryPath = repositoryPath;
         Git git = this.buildRepository();
-
-        /*
-        for (Ref branch : branches) {
-            System.out.println(branch.getName());
-            if (branch.getName().equals("refs/heads/master")) {
-                System.out.println("HERE");
-                */
         Iterable<RevCommit> commits = git.log().call();
         for (RevCommit commit : commits){
             this.commits.add(commit);
@@ -46,10 +34,9 @@ public class GitLogMiningClass {
     }
     private  Git buildRepository() throws IOException {
         Repository repo = new RepositoryBuilder().setGitDir(new File(repositoryPath)).setMustExist(true).build();
-        Git git = new Git(repo);
-        return git;
+        return new Git(repo);
     }
-    public  List<Commit> getCommits(String filter) throws GitAPIException, IOException {
+    public  List<Commit> getCommits(String filter){
         List<Commit> codes = new ArrayList<>();
         List<RevCommit> commitToRemove = new ArrayList<>();
         RevCommit prevCommit = null;
@@ -82,16 +69,16 @@ public class GitLogMiningClass {
     }
     public static class Commit{
         public Commit(RevCommit commit, RevCommit prevCommit) {
-            this.commit = commit;
+            this.actualCommit = commit;
             this.prevCommit = prevCommit;
         }
 
         public RevCommit getCommit() {
-            return commit;
+            return actualCommit;
         }
 
         public void setCommit(RevCommit commit) {
-            this.commit = commit;
+            this.actualCommit = commit;
         }
 
         public RevCommit getPrevCommit() {
@@ -102,7 +89,7 @@ public class GitLogMiningClass {
             this.prevCommit = prevCommit;
         }
 
-        private RevCommit commit;
+        private RevCommit actualCommit;
         private RevCommit prevCommit;
 
     }
@@ -125,21 +112,13 @@ public class GitLogMiningClass {
         df.setDiffComparator(RawTextComparator.DEFAULT);
         df.setDetectRenames(true);
         for (DiffEntry diff : differences){
-            if(diff.getChangeType() == DiffEntry.ChangeType.COPY){
-                //ignore  copies
-                continue;
-            }
             String fileName = diff.getOldPath();
             if(fileName.equalsIgnoreCase("/dev/null")){
                 //This is a new file
                 fileName = diff.getNewPath();
             }
-            if(!fileName.endsWith(".java")){
+            if(!fileName.endsWith(".java") || fileName.contains("/test/") || diff.getChangeType() == DiffEntry.ChangeType.COPY){
                 //ignore non .java files
-                continue;
-            }
-            if(fileName.contains("/test/")){
-                //ignore file in test directories
                 continue;
             }
             Classes cl = Classes.getClassByName(fileName,classes);
@@ -170,18 +149,4 @@ public class GitLogMiningClass {
         return classes;
     }
 
-    public RevCommit blame(String file, RevCommit commit) throws IOException, GitAPIException {
-        Git git = buildRepository();
-        BlameResult blameResult = git.blame().setFilePath(file).setTextComparator(RawTextComparator.WS_IGNORE_ALL).call();
-        RawText rawText = blameResult.getResultContents();
-        RevCommit result = null;
-        for (int i = 0; i < rawText.size(); i++){
-            RevCommit sourceCommit = blameResult.getSourceCommit(i);
-            if(sourceCommit.getId() == commit.getId()){
-                break;
-            }
-            result = sourceCommit;
-        }
-        return result;
-    }
 }

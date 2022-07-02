@@ -17,6 +17,9 @@ import java.util.Date;
 import java.util.List;
 
 public class JiraManager {
+    private JiraManager(){
+
+    }
     private static String readAll(Reader rd) throws IOException {
         StringBuilder sb = new StringBuilder();
         int cp;
@@ -26,13 +29,7 @@ public class JiraManager {
         return sb.toString();
     }
 
-    private static JSONArray readJsonArrayFromUrl(String url) throws IOException, JSONException {
-        try (InputStream is = new URL(url).openStream()) {
-            BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
-            String jsonText = readAll(rd);
-            return new JSONArray(jsonText);
-        }
-    }
+
 
     private static JSONObject readJsonFromUrl(String url) throws IOException, JSONException {
         try (InputStream is = new URL(url).openStream()) {

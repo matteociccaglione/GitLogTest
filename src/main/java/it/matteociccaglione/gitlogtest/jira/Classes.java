@@ -12,14 +12,13 @@ public class Classes {
     private Long locTouched;
     private Integer nr;
     private Integer nFix;
-    private Integer nAuth;
     private Integer locAdded;
     private Long maxLocAdded;
     private Float avgLocAdded;
     private Integer churn;
     private Integer maxChurn;
     private Float avgChurn;
-    private List<String> authors = new ArrayList<>();
+    private final List<String> authors = new ArrayList<>();
     public List<String> getAuthors(){
         return this.authors;
     }
@@ -30,21 +29,7 @@ public class Classes {
             }
         }
     }
-    public Classes(Version version, Boolean buggy, Long size, Long locTouched, Integer nr, Integer nFix, Integer nAuth, Integer locAdded, Long maxLocAdded, Float avgLocAdded, Integer churn, Integer maxChurn, Float avgChurn) {
-        this.version = version;
-        this.buggy = buggy;
-        this.size = size;
-        this.locTouched = locTouched;
-        this.nr = nr;
-        this.nFix = nFix;
-        this.nAuth = nAuth;
-        this.locAdded = locAdded;
-        this.maxLocAdded = maxLocAdded;
-        this.avgLocAdded = avgLocAdded;
-        this.churn = churn;
-        this.maxChurn = maxChurn;
-        this.avgChurn = avgChurn;
-    }
+
 
     public String getName() {
         return name;
@@ -61,7 +46,6 @@ public class Classes {
         this.maxChurn = 0;
         this.avgChurn = 0f;
         this.avgLocAdded = 0f;
-        this.nAuth = 0;
         this.nr = 0;
         this.nFix = 0;
         this.size = 0L;
@@ -125,9 +109,6 @@ public class Classes {
         return this.authors.size();
     }
 
-    public void setnAuth(Integer nAuth) {
-        this.nAuth = nAuth;
-    }
 
     public Integer getLocAdded() {
         return locAdded;

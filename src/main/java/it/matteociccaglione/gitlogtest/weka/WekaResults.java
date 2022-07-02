@@ -1,9 +1,7 @@
 package it.matteociccaglione.gitlogtest.weka;
 
-import weka.classifiers.Classifier;
-
 public class WekaResults {
-    private Double AUC;
+    private Double auc;
     private Double recall;
     private Double precision;
     private Double kappa;
@@ -117,7 +115,7 @@ public class WekaResults {
     }
 
     public WekaResults(Double AUC, Double recall, Double precision, Double kappa, Classifiers classifier) {
-        this.AUC = AUC;
+        this.auc = AUC;
         this.recall = recall;
         this.precision = precision;
         this.kappa = kappa;
@@ -125,12 +123,12 @@ public class WekaResults {
         this.nReleases = 0;
     }
 
-    public Double getAUC() {
-        return AUC;
+    public Double getAuc() {
+        return auc;
     }
 
-    public void setAUC(Double AUC) {
-        this.AUC = AUC;
+    public void setAuc(Double auc) {
+        this.auc = auc;
     }
 
     public Double getRecall() {
