@@ -6,12 +6,12 @@ import org.json.JSONObject;
 
 import java.io.*;
 import java.net.URL;
-import java.nio.charset.Charset;
+
 import java.nio.charset.StandardCharsets;
-import java.sql.Array;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.Instant;
+
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -35,9 +35,7 @@ public class JiraManager {
         try (InputStream is = new URL(url).openStream()) {
             BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
             String jsonText = readAll(rd);
-            JSONObject json = new JSONObject(jsonText);
-            is.close();
-            return json;
+            return new JSONObject(jsonText);
         }
     }
     public static List<Issue> retrieveIssues(String projectName) throws IOException, ParseException {
@@ -45,7 +43,6 @@ public class JiraManager {
         String constantUrl = "https://issues.apache.org/jira/rest/api/2/search?jql=project=%22"
                 + projectName + "%22AND%22issueType%22=%22Bug%22AND(%22status%22=%22closed%22OR"
                 + "%22status%22=%22resolved%22)AND%22resolution%22=%22fixed%22&fields=key,resolutiondate,versions,created&startAt=";
-        System.out.println(constantUrl);
         int issueCount=0;
         int count=0;
         int totalIssues = 0;

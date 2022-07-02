@@ -17,6 +17,7 @@ import weka.filters.supervised.instance.Resample;
 import weka.filters.supervised.instance.SpreadSubsample;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.List;
 
 
@@ -31,7 +32,7 @@ public class WekaManager {
         sb.append(filename, 0, filename.length()-4).append(".arff");
         fb.toFlat(sb.toString());
         File f = new File(filename);
-        f.delete();
+        Files.delete(f.toPath());
         return sb.toString();
     }
 

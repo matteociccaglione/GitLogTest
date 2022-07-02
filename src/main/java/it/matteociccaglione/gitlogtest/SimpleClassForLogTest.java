@@ -23,11 +23,7 @@ import java.time.Instant;
 import java.util.*;
 
 public class SimpleClassForLogTest {
-    public static final String ZOOKEEPER="ZOOKEEPER";
-    public static final String BOOK="BOOKKEEPER";
-    public static final String BOOK_PATH = "/home/utente/bookkeeper/.git";
-    public static final String ZOO_PATH = "/home/utente/zookeeper/.git";
-    public static Configuration conf;
+    private static  Configuration conf;
     public static void main(String[] args) throws Exception {
         File configFile = new File("config.csv");
          conf = FileBuilder.readConfiguration(configFile);
@@ -41,11 +37,9 @@ public class SimpleClassForLogTest {
         walkForward(List.of(filepathZ,filepathB),List.of(versionToUseZ,versionToUseB),List.of(conf.getProjectName1(),conf.getProjectName2()),List.of(conf.getProjectPath1(),conf.getProjectPath2()));
 
     }
-    private static void computeBugWithAV(Issue bug,List<Version> versionToUse, List<Issue> bugs, GitLogMiningClass gitLog) throws GitAPIException, IOException {
-        List<Version> affectedVersion = new ArrayList<>();
+    private static void searchAV(Issue bug, List<Version> versionToUse, List<Version> affectedVersion, List<Issue> bugs){
         if(bug.getVersion()!=null){
             List<Version> av = bug.getVersion();
-            int i = 0;
             for(Version a: av) {
                 for (Version ver : versionToUse) {
                     if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
@@ -56,6 +50,10 @@ public class SimpleClassForLogTest {
             }
             bugs.remove(bug);
         }
+    }
+    private static void computeBugWithAV(Issue bug,List<Version> versionToUse, List<Issue> bugs, GitLogMiningClass gitLog) throws GitAPIException, IOException {
+        List<Version> affectedVersion = new ArrayList<>();
+        searchAV(bug,versionToUse,affectedVersion,bugs);
         if(affectedVersion.isEmpty()){
             return;
         }
@@ -225,17 +223,7 @@ public class SimpleClassForLogTest {
         return affectedVersion;
     }
 
-    private static void computeCommitWF(Issue bug, List<Version> versionToUse, Map<String,List<Version>> map, GitLogMiningClass gitLog) throws GitAPIException, IOException, ParseException {
-        Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
-        Version version = Version.getVersionByDate(versionToUse, bugDate);
-        List<Version> trainingSet = null;
-        if (map.containsKey(version.getVersionNumber())) {
-            trainingSet = map.get(version.getVersionNumber());
-        }
-        if (trainingSet == null) {
-            return;
-        }
-        List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
+    private static List<Version> workWithVersion(Issue bug, List<Version> trainingSet,  List<GitLogMiningClass.Commit> commits) throws ParseException {
         List<Version> affectedVersion = new ArrayList<>();
         if (bug.getVersion() != null) {
             List<Version> av = bug.getVersion();
@@ -250,6 +238,22 @@ public class SimpleClassForLogTest {
         } else {
             affectedVersion = proportion(trainingSet, bug, commits.get(0));
         }
+        return affectedVersion;
+    }
+
+    private static void computeCommitWF(Issue bug, List<Version> versionToUse, Map<String,List<Version>> map, GitLogMiningClass gitLog) throws GitAPIException, IOException, ParseException {
+        Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
+        Version version = Version.getVersionByDate(versionToUse, bugDate);
+        List<Version> trainingSet = null;
+        if (map.containsKey(version.getVersionNumber())) {
+            trainingSet = map.get(version.getVersionNumber());
+        }
+        if (trainingSet == null) {
+            return;
+        }
+        List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
+        List<Version> affectedVersion = workWithVersion(bug,trainingSet,commits);
+
         if (affectedVersion.isEmpty()) {
             return;
         }
