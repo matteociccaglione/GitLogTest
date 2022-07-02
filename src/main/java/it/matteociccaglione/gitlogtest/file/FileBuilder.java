@@ -14,6 +14,7 @@ public class FileBuilder {
     }
 
     public static FileBuilder build(String filename, List<Version> dataset, String header) throws IOException {
+        File csv = null;
         try (FileWriter file = new FileWriter(filename)) {
 
             StringBuilder fileContent = new StringBuilder();
@@ -35,9 +36,10 @@ public class FileBuilder {
                 }
 
             }
-            File csv = new File(filename);
-            return new FileBuilder(csv);
+            csv = new File(filename);
+
         }
+        return new FileBuilder(csv);
     }
     private void handleData(String at, StringBuilder fileContent, Map<String, List<String>> atValueMap){
         if (at.equals("Buggy")) {

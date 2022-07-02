@@ -22,8 +22,8 @@ public class GitLogMiningClass {
     private GitLogMiningClass(String repositoryPath) throws GitAPIException, IOException {
         this.repositoryPath = repositoryPath;
         Git git = this.buildRepository();
-        Iterable<RevCommit> commits = git.log().call();
-        for (RevCommit commit : commits){
+        Iterable<RevCommit> comms = git.log().call();
+        for (RevCommit commit : comms){
             this.commits.add(commit);
         }
         git.close();

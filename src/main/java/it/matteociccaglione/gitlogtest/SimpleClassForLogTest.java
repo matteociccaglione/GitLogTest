@@ -17,6 +17,7 @@ import weka.core.Instances;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -25,16 +26,18 @@ import java.util.*;
 public class SimpleClassForLogTest {
     private static  Configuration conf;
     public static void main(String[] args) throws Exception {
-        File configFile = new File("config.csv");
-         conf = FileBuilder.readConfiguration(configFile);
-        createCsvForWekaPrediction(conf.getProjectName1(),conf.getProjectPath1());
-        createCsvForWekaPrediction(conf.getProjectName2(),conf.getProjectPath2());
+        URL url = SimpleClassForLogTest.class.getClassLoader().getResource("configuration.csv");
+        if(url!=null) {
+            File configFile = new File(url.getFile());
+            conf = FileBuilder.readConfiguration(configFile);
 
-        List<Version> versionToUseZ = buildProject(conf.getProjectName1(), conf.getProjectPath1());
-        List<Version> versionToUseB = buildProject(conf.getProjectName2(),conf.getProjectPath2());
-        String filepathZ = conf.getProjectOutputDirectory()+conf.getProjectName1().toLowerCase()+".csv";
-        String filepathB = conf.getProjectOutputDirectory()+conf.getProjectName2().toLowerCase()+".csv";
-        walkForward(List.of(filepathZ,filepathB),List.of(versionToUseZ,versionToUseB),List.of(conf.getProjectName1(),conf.getProjectName2()),List.of(conf.getProjectPath1(),conf.getProjectPath2()));
+
+            List<Version> versionToUseZ = buildProject(conf.getProjectName1(), conf.getProjectPath1());
+            List<Version> versionToUseB = buildProject(conf.getProjectName2(), conf.getProjectPath2());
+            String filepathZ = conf.getProjectOutputDirectory() + conf.getProjectName1().toLowerCase() + ".csv";
+            String filepathB = conf.getProjectOutputDirectory() + conf.getProjectName2().toLowerCase() + ".csv";
+            walkForward(List.of(filepathZ, filepathB), List.of(versionToUseZ, versionToUseB), List.of(conf.getProjectName1(), conf.getProjectName2()), List.of(conf.getProjectPath1(), conf.getProjectPath2()));
+        }
 
     }
     private static void searchAV(Issue bug, List<Version> versionToUse, List<Version> affectedVersion, List<Issue> bugs){
@@ -97,54 +100,9 @@ public class SimpleClassForLogTest {
             version.setClasses(classes,false);
         }
     }
-    private  static void createCsvForWekaPrediction(String projectName, String projectPath) throws IOException, GitAPIException, ParseException {
-        List<Version> versions = JiraManager.retrieveVersions(projectName);
-        int numberOfVersionToUse = versions.size();
-        versions.sort(new Version.VersionComparator());
-        List<Version> versionToUse = versions.subList(0,numberOfVersionToUse);
-        List<Issue> bugs = JiraManager.retrieveIssues(projectName);
-        bugs.sort(new Issue.IssueComparator());
-        GitLogMiningClass gitLog = GitLogMiningClass.getInstance(projectPath);
-        //Now for each bug search commit with this bug id
-        List<Issue> copyBugs = List.copyOf(bugs);
-        for (Issue bug: copyBugs){
-            computeBugWithAV(bug,versionToUse,bugs,gitLog);
-        }
-        for (Issue bug: bugs){
-            List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-            List<Version> affectedVersion = proportion(versionToUse,bug,commits.get(0));
-            if(affectedVersion.isEmpty()){
-                continue;
-            }
-            Date commitDate;
-            for (GitLogMiningClass.Commit commit: commits){
-                List<Classes> classes = gitLog.getFileModified(commit);
-                if(classes.isEmpty()){
-                    continue;
-                }
-                commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-                Version version = Version.getVersionByDate(affectedVersion,commitDate);
-                assert version != null;
-                version.setClasses(classes,true);
-                for (Version v : affectedVersion){
-                    v.setBuggyClasses(classes);
-                }
-            }
-        }
-        List<GitLogMiningClass.Commit> commits = gitLog.getCommits();
-        computeCommitWithoutBugs(commits,gitLog,versionToUse);
-        computeAvg(versionToUse);
-        List<Version> copyVersions = new ArrayList<>(versionToUse);
-        for (Version ver: copyVersions){
-            if(ver.getClasses()==null){
-                versionToUse.remove(ver);
-            }
-        }
-        String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
-        FileBuilder fb = FileBuilder.build(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".csv",versionToUse,header);
-        fb.toFlat(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".arff");
-    }
-    private static List<Version> buildProject(String projectName, String projectPath) throws Exception {
+
+
+    private static List<Version> buildProject(String projectName, String projectPath) throws IOException, ParseException, GitAPIException {
         List<Version> versions = JiraManager.retrieveVersions(projectName);
         int numberOfVersions = versions.size();
         int numberOfVersionToUse = numberOfVersions * 50 / 100;

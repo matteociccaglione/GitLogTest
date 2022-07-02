@@ -1,5 +1,7 @@
 package it.matteociccaglione.gitlogtest.jira;
 
+
+
 import java.util.*;
 
 public class Version {
@@ -28,26 +30,34 @@ public class Version {
             return;
         }
         for (Classes cl : classes){
-            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
-            if(prevCl==null){
-                this.classes.add(cl);
-                continue;
-            }
-
-                prevCl.setLocTouched(prevCl.getLocTouched() + cl.getLocTouched());
-                prevCl.setLocAdded(prevCl.getLocAdded() + cl.getLocAdded());
-                prevCl.setChurn(prevCl.getChurn() + cl.getChurn());
-                if (prevCl.getMaxChurn() < cl.getChurn()) {
-                    prevCl.setMaxChurn(cl.getChurn());
+                Classes prevCl = modifyClassMetrics(cl,false);
+                if(prevCl==null){
+                    continue;
                 }
-                if (prevCl.getMaxLocAdded() < (long) cl.getLocAdded()) {
-                    prevCl.setMaxLocAdded((long) cl.getLocAdded());
-                }
-                prevCl.setNr(prevCl.getNr() + cl.getNr());
-                prevCl.setAuthors(cl.getAuthors());
                 prevCl.setnFix(prevCl.getnFix() + cl.getnFix());
 
         }
+    }
+    private Classes modifyClassMetrics(Classes cl,Boolean buggy){
+        Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+        if(prevCl==null){
+            this.classes.add(cl);
+            if(Boolean.TRUE.equals(buggy))
+                cl.setBuggy(true);
+            return null;
+        }
+        prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
+        prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
+        prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
+        if(prevCl.getMaxChurn()<cl.getChurn()){
+            prevCl.setMaxChurn(cl.getChurn());
+        }
+        if(prevCl.getMaxLocAdded()<cl.getLocAdded()){
+            prevCl.setMaxLocAdded((long)cl.getLocAdded());
+        }
+        prevCl.setNr(prevCl.getNr()+cl.getNr());
+        prevCl.setAuthors(cl.getAuthors());
+        return prevCl;
     }
     public void setClasses(List<Classes> classes,Boolean buggy) {
         if(this.classes == null){
@@ -60,22 +70,10 @@ public class Version {
             return;
         }
         for (Classes cl : classes){
-            Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
+            Classes prevCl = modifyClassMetrics(cl,buggy);
             if(prevCl==null){
-                this.classes.add(cl);
                 continue;
             }
-            prevCl.setLocTouched(prevCl.getLocTouched()+cl.getLocTouched());
-            prevCl.setLocAdded(prevCl.getLocAdded()+cl.getLocAdded());
-            prevCl.setChurn(prevCl.getChurn()+cl.getChurn());
-            if(prevCl.getMaxChurn()<cl.getChurn()){
-                prevCl.setMaxChurn(cl.getChurn());
-            }
-            if(prevCl.getMaxLocAdded()<cl.getLocAdded()){
-                prevCl.setMaxLocAdded((long)cl.getLocAdded());
-            }
-            prevCl.setNr(prevCl.getNr()+cl.getNr());
-            prevCl.setAuthors(cl.getAuthors());
             if(Boolean.TRUE.equals(buggy)){
                 prevCl.setnFix(prevCl.getnFix()+cl.getnFix());
             }
