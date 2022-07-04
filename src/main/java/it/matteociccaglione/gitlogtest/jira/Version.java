@@ -149,6 +149,24 @@ public class Version {
         }
         return finalVersion;
     }
+    public static Version getVersionByDateAfter(List<Version> versions, Date date){
+        Version finalVersion = null;
+        for (Version ver: versions){
+            if(ver.versionDate.compareTo(date)>=0){
+                if(finalVersion == null){
+                    finalVersion=ver;
+                    continue;
+                }
+                if(finalVersion.getVersionDate().compareTo(ver.getVersionDate())>0){
+                    finalVersion = ver;
+                }
+            }
+        }
+        if(finalVersion==null){
+            return versions.get(versions.size()-1);
+        }
+        return finalVersion;
+    }
 
     public void setBuggyClasses(List<Classes> classes){
         if(this.classes == null){
@@ -198,5 +216,14 @@ public class Version {
             epochVersion++;
         }
         return -1;
+    }
+    public static List<String> getPreviousVersionNumber(List<Version> versionToUse, Date versionDate){
+        List<String> result = new ArrayList<>();
+        for (Version ver: versionToUse){
+            if(ver.getVersionDate().after(versionDate)){
+                result.add(ver.getVersionNumber());
+            }
+        }
+        return result;
     }
 }

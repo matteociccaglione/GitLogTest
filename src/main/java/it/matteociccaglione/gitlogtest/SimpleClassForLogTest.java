@@ -10,7 +10,6 @@ import org.eclipse.jgit.api.errors.GitAPIException;
 
 import weka.classifiers.bayes.NaiveBayes;
 import weka.classifiers.lazy.IBk;
-import weka.classifiers.meta.CostSensitiveClassifier;
 import weka.classifiers.trees.RandomForest;
 import weka.core.Instances;
 
@@ -24,6 +23,7 @@ import java.time.Instant;
 import java.util.*;
 
 public class SimpleClassForLogTest {
+    private static final String DATE_PATTERN = "yyyy-MM-dd";
     private static  Configuration conf;
     public static void main(String[] args) throws Exception {
         URL url = SimpleClassForLogTest.class.getClassLoader().getResource("configuration.csv");
@@ -47,14 +47,16 @@ public class SimpleClassForLogTest {
                 for (Version ver : versionToUse) {
                     if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
                         affectedVersion.add(ver);
-                        ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
                     }
                 }
             }
             bugs.remove(bug);
         }
     }
-    private static void computeBugWithAV(Issue bug,List<Version> versionToUse, List<Issue> bugs, GitLogMiningClass gitLog) throws GitAPIException, IOException {
+    private static void computeBugWithAV(Issue bug,List<Version> versionToUse, List<Issue> bugs, GitLogMiningClass gitLog) throws GitAPIException, IOException, ParseException {
+        Date fixedDate  = new SimpleDateFormat(DATE_PATTERN).parse(bug.getResolvedDate().substring(0,10));
+        Version fixedVersion = Version.getVersionByDateAfter(versionToUse,fixedDate);
+        fixedVersion.setNumberOfBugFixed(fixedVersion.getNumberOfBugFixed()+1);
         List<Version> affectedVersion = new ArrayList<>();
         searchAV(bug,versionToUse,affectedVersion,bugs);
         if(affectedVersion.isEmpty()){
@@ -118,8 +120,11 @@ public class SimpleClassForLogTest {
             computeBugWithAV(bug,versionToUse,bugs,gitLog);
         }
         for (Issue bug: bugs){
+            Date fixedDate  = new SimpleDateFormat(DATE_PATTERN).parse(bug.getResolvedDate().substring(0,10));
+            Version fixedVersion = Version.getVersionByDateAfter(versionToUse,fixedDate);
+            fixedVersion.setNumberOfBugFixed(fixedVersion.getNumberOfBugFixed()+1);
             List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-            List<Version> affectedVersion = proportion(versionToUse,bug,commits.get(0));
+            List<Version> affectedVersion = proportion(versionToUse,bug);
             if(affectedVersion.isEmpty()){
                 continue;
             }
@@ -153,9 +158,9 @@ public class SimpleClassForLogTest {
 
         return versionToUse;
     }
-    private static List<Version> proportion(List<Version> versionToUse, Issue bug, GitLogMiningClass.Commit commit) throws ParseException {
-        Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-        Version fixedVersion = Version.getVersionByDate(versionToUse,commitDate);
+    private static List<Version> proportion(List<Version> versionToUse, Issue bug) throws ParseException {
+        Date fixedDate  = new SimpleDateFormat(DATE_PATTERN).parse(bug.getResolvedDate().substring(0,10));
+        Version fixedVersion = Version.getVersionByDateAfter(versionToUse,fixedDate);
         if(fixedVersion==null){
             return Collections.emptyList();
         }
@@ -172,7 +177,7 @@ public class SimpleClassForLogTest {
         if(numberOfVer==0)
             numberOfVer=1;
         float proportion = numberOfFix/ (float) numberOfVer;
-        Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getCreatedDate().substring(0,11));
+        Date bugDate = new SimpleDateFormat(DATE_PATTERN).parse(bug.getCreatedDate().substring(0,11));
         Version openingVersion = Version.getVersionByDate(versionToUse,bugDate);
         int ivEpoch = Math.round(Version.toEpochVersion(versionToUse,fixedVersion) - (Version.toEpochVersion(versionToUse,fixedVersion)-Version.toEpochVersion(versionToUse,openingVersion))*proportion);
         for (int i = ivEpoch; i < Version.toEpochVersion(versionToUse,fixedVersion); i++){
@@ -181,7 +186,10 @@ public class SimpleClassForLogTest {
         return affectedVersion;
     }
 
-    private static List<Version> workWithVersion(Issue bug, List<Version> trainingSet,  List<GitLogMiningClass.Commit> commits) throws ParseException {
+    private static List<Version> workWithVersion(Issue bug, List<Version> trainingSet) throws ParseException {
+        Date fixedDate  = new SimpleDateFormat(DATE_PATTERN).parse(bug.getResolvedDate().substring(0,10));
+        Version fixedVersion = Version.getVersionByDateAfter(trainingSet,fixedDate);
+        fixedVersion.setNumberOfBugFixed(fixedVersion.getNumberOfBugFixed()+1);
         List<Version> affectedVersion = new ArrayList<>();
         if (bug.getVersion() != null) {
             List<Version> av = bug.getVersion();
@@ -189,45 +197,62 @@ public class SimpleClassForLogTest {
                 for (Version ver : trainingSet) {
                     if (Objects.equals(ver.getVersionNumber(), a.getVersionNumber())) {
                         affectedVersion.add(ver);
-                        ver.setNumberOfBugFixed(ver.getNumberOfBugFixed() + 1);
                     }
                 }
             }
         } else {
-            affectedVersion = proportion(trainingSet, bug, commits.get(0));
+            affectedVersion = proportion(trainingSet, bug);
         }
         return affectedVersion;
     }
-
+    private static void addTrainingSets(List<List<Version>> trainingSets, Map<String,List<Version>> map, Version version, List<Version> versionToUse){
+        List<Version> trainingSet = map.get(version.getVersionNumber());
+        trainingSets.add(trainingSet);
+        List<String> otherVersionNumber = Version.getPreviousVersionNumber(versionToUse,version.getVersionDate());
+        for (String num: otherVersionNumber){
+            trainingSet=map.get(num);
+            trainingSets.add(trainingSet);
+        }
+    }
     private static void computeCommitWF(Issue bug, List<Version> versionToUse, Map<String,List<Version>> map, GitLogMiningClass gitLog) throws GitAPIException, IOException, ParseException {
         Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
         Version version = Version.getVersionByDate(versionToUse, bugDate);
+        List<List<Version>> trainingSets = new ArrayList<>();
         List<Version> trainingSet = null;
         if (map.containsKey(version.getVersionNumber())) {
-            trainingSet = map.get(version.getVersionNumber());
+            addTrainingSets(trainingSets,map,version,versionToUse);
         }
-        if (trainingSet == null) {
+        if (trainingSets.isEmpty()) {
             return;
         }
+        int i = 0;
         List<GitLogMiningClass.Commit> commits = gitLog.getCommits(bug.getKey());
-        List<Version> affectedVersion = workWithVersion(bug,trainingSet,commits);
-
-        if (affectedVersion.isEmpty()) {
-            return;
-        }
-        for (GitLogMiningClass.Commit commit : commits) {
-
-            List<Classes> classes = gitLog.getFileModified(commit);
-            if (classes.isEmpty()) {
+        while(i<trainingSets.size()) {
+            trainingSet = trainingSets.get(i);
+            if(trainingSet.isEmpty()){
+                i++;
                 continue;
             }
-            Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
-            version = Version.getVersionByDate(affectedVersion, commitDate);
-            assert version != null;
-            version.setClasses(classes, true);
-            for (Version v : affectedVersion) {
-                v.setBuggyClasses(classes);
+            List<Version> affectedVersion = workWithVersion(bug, trainingSet);
+
+            if (affectedVersion.isEmpty()) {
+                return;
             }
+            for (GitLogMiningClass.Commit commit : commits) {
+
+                List<Classes> classes = gitLog.getFileModified(commit);
+                if (classes.isEmpty()) {
+                    continue;
+                }
+                Date commitDate = Date.from(Instant.ofEpochSecond(commit.getCommit().getCommitTime()));
+                version = Version.getVersionByDate(affectedVersion, commitDate);
+                assert version != null;
+                version.setClasses(classes, true);
+                for (Version v : affectedVersion) {
+                    v.setBuggyClasses(classes);
+                }
+            }
+            i++;
         }
     }
     private static void computeCommitNoBugWF(GitLogMiningClass gitLog, List<Version> versionToUse,List<List<Version>> trainingSets) throws GitAPIException, IOException {
@@ -256,7 +281,7 @@ public class SimpleClassForLogTest {
             String projectName = projectNames.get(c);
             String projectPath = projectPaths.get(c);
             List<List<Version>> trainingSets = new ArrayList<>();
-            Map<String,List<Version>> map = new HashMap<>();
+            Map<String, List<Version>> map = new HashMap<>();
             List<Version> testingSets = new ArrayList<>();
             List<Issue> bugs = JiraManager.retrieveIssues(projectName);
             bugs.sort(new Issue.IssueComparator());
@@ -272,22 +297,22 @@ public class SimpleClassForLogTest {
             }
             GitLogMiningClass gitLog = GitLogMiningClass.getInstance(projectPath);
             for (Issue bug : bugs) {
-                computeCommitWF(bug,versionToUse,map,gitLog);
+                computeCommitWF(bug, versionToUse, map, gitLog);
             }
-            computeCommitNoBugWF(gitLog,versionToUse,trainingSets);
+            computeCommitNoBugWF(gitLog, versionToUse, trainingSets);
 
-            List<WekaResults> nb = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
-            List<WekaResults> ibk = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
-            List<WekaResults> rf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE);
-            List<WekaResults> nbT = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
-            List<WekaResults> ibkT = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
-            List<WekaResults> rfT = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.THRESHOLD);
-            List<WekaResults> nbNf = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
-            List<WekaResults> ibkNf = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
-            List<WekaResults> rfNf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.NONE);
-            FileBuilder.buildWekaCsv(List.of(nb,ibk,rf,nbT,ibkT,rfT,nbNf,ibkNf,rfNf),"Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection,Cost sensitive, TP, FP, TN, FN,Precision,Recall,AUC,Kappa",projectName,"/home/utente/Scrivania/"+projectName+"WekaResult.csv");
+            List<WekaResults> nb = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE_LEARNING);
+            List<WekaResults> ibk = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE_LEARNING);
+            List<WekaResults> rf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE_LEARNING);
+            List<WekaResults> nbT = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE_THRESHOLD);
+            List<WekaResults> ibkT = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE_THRESHOLD);
+            List<WekaResults> rfT = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.SENSITIVE_THRESHOLD);
+            List<WekaResults> nbNf = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.NO_COST_SENSITIVE);
+            List<WekaResults> ibkNf = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.NO_COST_SENSITIVE);
+            List<WekaResults> rfNf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.NO_COST_SENSITIVE);
+            FileBuilder.buildWekaCsv(List.of(nb, ibk, rf, nbT, ibkT, rfT, nbNf, ibkNf, rfNf), "Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection,Cost sensitive, TP, FP, TN, FN,Precision,Recall,AUC,Kappa", projectName, "/home/utente/Scrivania/" + projectName + "WekaResult.csv");
         }
-        }
+    }
     private static List<WekaResults> performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet, List<Version> totalData, CostSensitiveType costSensitiveType) throws Exception {
         List<WekaResults> wr = new ArrayList<>();
 
@@ -304,12 +329,13 @@ public class SimpleClassForLogTest {
             }
             String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
             WekaResults wr1;
-            List<Instances> instances = WekaManager.featureSelection(trainingFile, true);
+            String testingFile = WekaManager.toArff(List.of(testingSet.get(i)),"/home/utente/Scrivania/testing.csv");
+            List<Instances> instances = WekaManager.featureSelection(trainingFile,testingFile, true);
             Instances testingInstances = instances.get(1);
             Instances trainingInstances = instances.get(0);
-            CostSensitiveClassifier costSensitiveClassifier = new CostSensitiveClassifier();
-            costSensitiveClassifier.setClassifier(cl);
-            wr1 = WekaManager.sampling(trainingInstances, testingInstances, costSensitiveClassifier, classifier, SamplingMethods.SPREADSUBSAMPLE,costSensitiveType);
+            testingInstances.setClassIndex(trainingInstances.numAttributes()-1);
+
+            wr1 = WekaManager.sampling(trainingInstances, testingInstances, cl, classifier, SamplingMethods.SPREADSUBSAMPLE,costSensitiveType);
             wr1.setnReleases(trainingSets.get(i).size());
             wr1.setPerTraining((float)trainingSets.get(i).size()/totalData.size());
             wr1.setPerDefTraining(Version.getPercentageDefective(trainingSets.get(i)));

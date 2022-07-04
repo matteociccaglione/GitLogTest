@@ -65,32 +65,31 @@ public class WekaManager {
         cl.setClassifier(classifier);
         return sampling(iTraining,iTesting,cl,classifiers,samplingMethods,costSensitiveType);
     }
-    private static CostMatrix buildCostMatrix(){
+    private static CostMatrix buildCostMatrix(double fp, double fn){
         CostMatrix costMatrix = new CostMatrix(2);
         costMatrix.setCell(0, 0, 0.0);
-        costMatrix.setCell(1, 0, (double) 10);
-        costMatrix.setCell(0, 1, (double) 0);
+        costMatrix.setCell(1, 0,  fp);
+        costMatrix.setCell(0, 1,  fn);
         costMatrix.setCell(1, 1, 0.0);
         return costMatrix;
     }
-    public static WekaResults sampling(Instances iTraining, Instances iTesting, CostSensitiveClassifier classifier, Classifiers classifiers, SamplingMethods samplingMethods,CostSensitiveType costSensitiveType) throws Exception {
-        Classifier cl = classifier.getClassifier();
-        if(costSensitiveType==CostSensitiveType.SENSITIVE){
-            classifier.setCostMatrix(buildCostMatrix());
+    public static WekaResults sampling(Instances iTraining, Instances iTesting, Classifier cl, Classifiers classifiers, SamplingMethods samplingMethods,CostSensitiveType costSensitiveType) throws Exception {
+        CostSensitiveClassifier classifier = new CostSensitiveClassifier();
+        if(costSensitiveType==CostSensitiveType.SENSITIVE_LEARNING){
+            classifier.setCostMatrix(buildCostMatrix(10,1));
             classifier.setMinimizeExpectedCost(false);
         }
-        if(costSensitiveType==CostSensitiveType.THRESHOLD){
-            classifier.setCostMatrix(buildCostMatrix());
+        if(costSensitiveType==CostSensitiveType.SENSITIVE_THRESHOLD){
+            classifier.setCostMatrix(buildCostMatrix(10,1));
             classifier.setMinimizeExpectedCost(true);
         }
         Resample resample = new Resample();
         SpreadSubsample spreadSubsample = new SpreadSubsample();
         resample.setInputFormat(iTraining);
         FilteredClassifier fc = new FilteredClassifier();
-        if(costSensitiveType==CostSensitiveType.NONE)
-            fc.setClassifier(cl);
-        else
-            fc.setClassifier(classifier);
+        fc.setClassifier(cl);
+
+
         if(samplingMethods == SamplingMethods.RESAMPLE){
             fc.setFilter(resample);
         }
@@ -99,9 +98,16 @@ public class WekaManager {
             spreadSubsample.setOptions(opts);
             fc.setFilter(spreadSubsample);
         }
-        fc.buildClassifier(iTraining);
+        classifier.setClassifier(fc);
         Evaluation eval = new Evaluation(iTesting);
-        eval.evaluateModel(fc,iTesting);
+        if(costSensitiveType==CostSensitiveType.NO_COST_SENSITIVE){
+            fc.buildClassifier(iTraining);
+            eval.evaluateModel(fc,iTesting);
+        }
+        else {
+            classifier.buildClassifier(iTraining);
+            eval.evaluateModel(classifier,iTesting);
+        }
         WekaResults wr =  new WekaResults(eval.areaUnderROC(1), eval.recall(1),eval.precision(1),eval.kappa(),classifiers);
         wr.setTn(eval.numTrueNegatives(1));
         wr.setTp(eval.numTruePositives(1));
@@ -110,7 +116,7 @@ public class WekaManager {
         return wr;
     }
 
-    public static List<Instances> featureSelection(String dataSource, boolean backward) throws Exception {
+    public static List<Instances> featureSelection(String dataSource,String testingSource, boolean backward) throws Exception {
         ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(dataSource);
         Instances iTraining = dataTraining.getDataSet();
         iTraining.setClassIndex(iTraining.numAttributes()-1);
@@ -123,9 +129,13 @@ public class WekaManager {
         filter.setInputFormat(iTraining);
         Instances filteredTraining = Filter.useFilter(iTraining,filter);
         filteredTraining.setClassIndex(filteredTraining.numAttributes()-1);
-        Instances noFilterTesting = new ConverterUtils.DataSource(dataSource).getDataSet();
+        Instances noFilterTesting = new ConverterUtils.DataSource(testingSource).getDataSet();
         Instances filteredTesting = Filter.useFilter(noFilterTesting,filter);
         filteredTesting.setClassIndex(filteredTraining.numAttributes()-1);
         return List.of(filteredTraining,filteredTesting);
+    }
+    public static Instances getInstancesFromSource(String dataSource) throws Exception {
+        ConverterUtils.DataSource dataTraining = new ConverterUtils.DataSource(dataSource);
+        return dataTraining.getDataSet();
     }
 }
