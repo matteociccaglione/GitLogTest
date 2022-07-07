@@ -39,6 +39,30 @@ public class Classes {
         this.names.add(name);
     }
 
+    public Classes getCopy(){
+        Classes cl = new  Classes(this.name);
+        cl.locAdded=this.locAdded;
+        cl.locTouched=this.locTouched;
+        cl.maxChurn=this.maxChurn;
+        cl.avgChurn=this.avgChurn;
+        cl.avgLocAdded=this.avgLocAdded;
+        cl.nr=this.nr;
+        cl.nFix=this.nFix;
+        cl.size=this.size;
+        cl.maxLocAdded=this.maxLocAdded;
+        cl.churn=this.churn;
+        cl.buggy=this.buggy;
+        cl.names=this.names;
+        return cl;
+    }
+    public static List<Classes> copyList(List<Classes> source){
+        List<Classes> dest = new ArrayList<>();
+        for (Classes cl: source){
+            dest.add(cl.getCopy());
+        }
+        return dest;
+    }
+
     public Classes(String name){
         this.name = name;
         this.locAdded=0;

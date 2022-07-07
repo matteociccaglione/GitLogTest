@@ -26,7 +26,7 @@ public class Version {
     }
     public void setClasses(List<Classes> classes){
         if(this.classes == null){
-            this.classes = classes;
+            this.classes = Classes.copyList(classes);
             return;
         }
         for (Classes cl : classes){
@@ -41,7 +41,7 @@ public class Version {
     private Classes modifyClassMetrics(Classes cl,Boolean buggy){
         Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
         if(prevCl==null){
-            this.classes.add(cl);
+            this.classes.add(cl.getCopy());
             if(Boolean.TRUE.equals(buggy))
                 cl.setBuggy(true);
             return null;
@@ -61,7 +61,7 @@ public class Version {
     }
     public void setClasses(List<Classes> classes,Boolean buggy) {
         if(this.classes == null){
-            this.classes = classes;
+            this.classes = Classes.copyList(classes);
             if(Boolean.TRUE.equals(buggy)){
                 for (Classes cl: this.classes){
                     cl.setBuggy(true);
@@ -170,20 +170,16 @@ public class Version {
 
     public void setBuggyClasses(List<Classes> classes){
         if(this.classes == null){
-            this.classes = classes;
+            this.classes = Classes.copyList(classes);
                 for (Classes cl: this.classes) {
                     cl.setBuggy(true);
                 }
             return;
         }
         for (Classes cl : classes){
-            if(!this.classes.contains(cl)){
-                this.classes.add(cl);
-                continue;
-            }
             Classes prevCl = Classes.getClassByName(cl.getName(),this.classes);
             if(prevCl==null){
-                this.classes.add(cl);
+                this.classes.add(cl.getCopy());
                 prevCl=cl;
             }
             prevCl.setBuggy(true);
