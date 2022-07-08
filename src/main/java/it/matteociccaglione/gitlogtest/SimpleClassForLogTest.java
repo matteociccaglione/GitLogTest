@@ -34,8 +34,8 @@ public class SimpleClassForLogTest {
 
             List<Version> versionToUseZ = buildProject(conf.getProjectName1(), conf.getProjectPath1());
             List<Version> versionToUseB = buildProject(conf.getProjectName2(), conf.getProjectPath2());
-            String filepathZ = conf.getProjectOutputDirectory() + conf.getProjectName1().toLowerCase() + ".csv";
-            String filepathB = conf.getProjectOutputDirectory() + conf.getProjectName2().toLowerCase() + ".csv";
+            String filepathZ = conf.getProjectOutputDirectory() + File.separator+conf.getProjectName1().toLowerCase() + ".csv";
+            String filepathB = conf.getProjectOutputDirectory() + File.separator+ conf.getProjectName2().toLowerCase() + ".csv";
             walkForward(List.of(filepathZ, filepathB), List.of(versionToUseZ, versionToUseB), List.of(conf.getProjectName1(), conf.getProjectName2()), List.of(conf.getProjectPath1(), conf.getProjectPath2()));
         }
 
@@ -114,8 +114,8 @@ public class SimpleClassForLogTest {
             }
         }
         String header = "Version,File,LOC_Touched,LOC_Added,Churn,NAuth,MaxLOC_Added,MaxChurn,AvgLOC_Added,AvgChurn,NFix,Nr,Buggy";
-        FileBuilder fb = FileBuilder.build(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".csv",versionToUse,header);
-        fb.toFlat(conf.getProjectOutputDirectory()+projectName.toLowerCase()+".arff");
+        FileBuilder fb = FileBuilder.build(conf.getProjectOutputDirectory()+File.separator+projectName.toLowerCase()+".csv",versionToUse,header);
+        fb.toFlat(conf.getProjectOutputDirectory()+File.separator+projectName.toLowerCase()+".arff");
 
         return versionToUse;
     }
@@ -209,7 +209,7 @@ public class SimpleClassForLogTest {
         Date bugDate = new SimpleDateFormat("yy-MM-dd").parse(bug.getResolvedDate().substring(0, 11));
         Version version = Version.getVersionByDate(versionToUse, bugDate);
         List<List<Version>> trainingSets = new ArrayList<>();
-        List<Version> trainingSet = null;
+        List<Version> trainingSet;
         if (map.containsKey(version.getVersionNumber())) {
             addTrainingSets(trainingSets,map,version,versionToUse);
         }
@@ -296,7 +296,7 @@ public class SimpleClassForLogTest {
             List<WekaResults> nbNf = performWeka(Classifiers.NAIVE_BAYES, trainingSets, testingSets, versionToUse, CostSensitiveType.NO_COST_SENSITIVE);
             List<WekaResults> ibkNf = performWeka(Classifiers.IBK, trainingSets, testingSets, versionToUse, CostSensitiveType.NO_COST_SENSITIVE);
             List<WekaResults> rfNf = performWeka(Classifiers.RANDOM_FOREST, trainingSets, testingSets, versionToUse, CostSensitiveType.NO_COST_SENSITIVE);
-            FileBuilder.buildWekaCsv(List.of(nb, ibk, rf, nbT, ibkT, rfT, nbNf, ibkNf, rfNf), "Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection,Cost sensitive, TP, FP, TN, FN,Precision,Recall,AUC,Kappa", projectName, "/home/utente/Scrivania/" + projectName + "WekaResult.csv");
+            FileBuilder.buildWekaCsv(List.of(nb, ibk, rf, nbT, ibkT, rfT, nbNf, ibkNf, rfNf), "Dataset,#TrainingRelease,%Training,%Defective in training, %Defective in testing, Classifier,balancing, Feature selection,Cost sensitive, TP, FP, TN, FN,Precision,Recall,AUC,Kappa", projectName, conf.getProjectOutputDirectory()+File.separator + projectName + "WekaResult.csv");
         }
     }
     private static List<WekaResults> performWeka(Classifiers classifier, List<List<Version>> trainingSets, List<Version> testingSet, List<Version> totalData, CostSensitiveType costSensitiveType) throws Exception {
@@ -313,9 +313,9 @@ public class SimpleClassForLogTest {
             if(classifier == Classifiers.RANDOM_FOREST){
                 cl = new RandomForest();
             }
-            String trainingFile = WekaManager.toArff(trainingSets.get(i),"/home/utente/Scrivania/training.csv");
+            String trainingFile = WekaManager.toArff(trainingSets.get(i),conf.getProjectOutputDirectory()+File.separator+"training.csv");
             WekaResults wr1;
-            String testingFile = WekaManager.toArff(List.of(testingSet.get(i)),"/home/utente/Scrivania/testing.csv");
+            String testingFile = WekaManager.toArff(List.of(testingSet.get(i)),conf.getProjectOutputDirectory()+File.separator+"testing.csv");
             List<Instances> instances = WekaManager.featureSelection(trainingFile,testingFile, true);
             Instances testingInstances = instances.get(1);
             Instances trainingInstances = instances.get(0);

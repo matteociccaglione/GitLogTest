@@ -1,0 +1,2 @@
+projectName1,projectName2,projectPath1,projectPath2,projectOutputDirectory
+ZOOKEEPER,BOOKKEEPER,/home/utente/zookeeper/.git,/home/utente/bookkeeper/.git,/home/utente/Scrivania
