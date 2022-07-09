@@ -63,10 +63,5 @@ public class Issue {
         public int compare(Issue issue, Issue i1) {
             return issue.getResolvedDate().compareTo(i1.getResolvedDate());
         }
-
-        @Override
-        public boolean equals(Object o) {
-            return false;
-        }
     }
 }

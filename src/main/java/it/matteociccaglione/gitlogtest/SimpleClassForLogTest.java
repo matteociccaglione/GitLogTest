@@ -86,6 +86,7 @@ public class SimpleClassForLogTest {
         List<Version> versionToUse = versions.subList(0,numberOfVersionToUse);
 
         List<Issue> bugs = JiraManager.retrieveIssues(projectName);
+
         bugs.sort(new Issue.IssueComparator());
         GitLogMiningClass gitLog = GitLogMiningClass.getInstance(projectPath);
         //Now for each bug search commit with this bug id
